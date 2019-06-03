@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"github.com/elwin/transmit/client"
 	"io"
 	"net"
 	"net/textproto"
@@ -85,6 +86,13 @@ func Dial(addr string, options ...DialOption) (*ServerConn, error) {
 
 	tconn := do.conn
 	if tconn == nil {
+
+		local := "1-ff00:0:112,[127.0.0.1]:40001"
+		remote := "1-ff00:0:110,[127.0.0.1]:40001"
+
+
+		tconn = client.Connect(local, remote)
+		/*
 		var err error
 
 		if do.dialFunc != nil {
@@ -104,25 +112,38 @@ func Dial(addr string, options ...DialOption) (*ServerConn, error) {
 		if err != nil {
 			return nil, err
 		}
+		 */
 	}
 
 	// Use the resolved IP address in case addr contains a domain name
 	// If we use the domain name, we might not resolve to the same IP.
-	remoteAddr := tconn.RemoteAddr().(*net.TCPAddr)
+	remoteAddr := tconn.RemoteAddr()
 
 	var sourceConn io.ReadWriteCloser = tconn
 	if do.debugOutput != nil {
 		sourceConn = newDebugWrapper(tconn, do.debugOutput)
 	}
 
+
+	conn := textproto.NewConn(sourceConn)
+
+
+
 	c := &ServerConn{
 		options:  do,
 		features: make(map[string]string),
-		conn:     textproto.NewConn(sourceConn),
-		host:     remoteAddr.IP.String(),
+		conn:     conn,
+		host:     remoteAddr.String(),
 	}
 
-	_, _, err := c.conn.ReadResponse(StatusReady)
+
+	// QUIC stream has no handshake as in TCP, thus we need to
+	// send a packet to establish the first connection
+	// Will error since expects 200 but returns 220 (first connection)
+	_ = c.NoOp()
+
+	_, _, err := c.conn.ReadResponse(StatusCommandOK)
+
 	if err != nil {
 		c.Quit()
 		return nil, err
