@@ -6,6 +6,7 @@ package server
 
 import (
 	"crypto/tls"
+	"github.com/elwin/transmit/scion"
 	"io"
 	"net"
 	"os"
@@ -135,6 +136,7 @@ func isErrorAddressAlreadyInUse(err error) bool {
 }
 
 func newPassiveSocket(host string, port func() int, logger Logger, sessionID string, tlsConfig *tls.Config) (DataSocket, error) {
+	/*
 	socket := new(ftpPassiveSocket)
 	socket.ingress = make(chan []byte)
 	socket.egress = make(chan []byte)
@@ -153,6 +155,12 @@ func newPassiveSocket(host string, port func() int, logger Logger, sessionID str
 		break
 	}
 	return socket, err
+	*/
+
+	listener := scion.Listen("1-ff00:0:110,[127.0.0.1]:40002")
+	stream, err := listener.Accept()
+
+	return ScionSocket{stream, 40002}, err
 }
 
 func (socket *ftpPassiveSocket) Host() string {
@@ -182,6 +190,24 @@ func (socket *ftpPassiveSocket) ReadFrom(r io.Reader) (int64, error) {
 	// For normal TCPConn, this will use sendfile syscall; if not,
 	// it will just downgrade to normal read/write procedure
 	return io.Copy(socket.conn, r)
+}
+
+type ScionSocket struct {
+	net.Conn
+	port int
+}
+
+func (connection ScionSocket) Host() string {
+	return connection.LocalAddr().String()
+}
+
+func (connection ScionSocket) ReadFrom(r io.Reader) (int64, error) {
+	return io.Copy(connection, r)
+}
+
+func (connection ScionSocket) Port() int {
+
+	return connection.port
 }
 
 func (socket *ftpPassiveSocket) Write(p []byte) (n int, err error) {

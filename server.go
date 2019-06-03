@@ -10,6 +10,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/elwin/transmit/scion"
 	"net"
 	"strconv"
 )
@@ -202,6 +203,7 @@ func simpleTLSConfig(certFile, keyFile string) (*tls.Config, error) {
 // listening on the same port.
 //
 func (server *Server) ListenAndServe() error {
+
 	var listener net.Listener
 	var err error
 	var curFeats = featCmds
@@ -220,7 +222,11 @@ func (server *Server) ListenAndServe() error {
 			listener, err = tls.Listen("tcp", server.listenTo, server.tlsConfig)
 		}
 	} else {
-		listener, err = net.Listen("tcp", server.listenTo)
+
+		listener = scion.Listen("1-ff00:0:110,[127.0.0.1]:40001")
+		// listener, err = net.Listen("tcp", server.listenTo)
+
+
 	}
 	if err != nil {
 		return err
@@ -237,11 +243,18 @@ func (server *Server) ListenAndServe() error {
 // request in a new goroutine.
 //
 func (server *Server) Serve(l net.Listener) error {
+
 	server.listener = l
 	server.ctx, server.cancel = context.WithCancel(context.Background())
 	sessionID := ""
 	for {
+
+		fmt.Println("Waiting for connection")
+
 		tcpConn, err := server.listener.Accept()
+
+		fmt.Println("Accepted connection")
+
 		if err != nil {
 			select {
 			case <-server.ctx.Done():
