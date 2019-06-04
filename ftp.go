@@ -8,8 +8,10 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"github.com/elwin/transmit/client"
 	"io"
+	"math/rand"
 	"net"
 	"net/textproto"
 	"strconv"
@@ -358,10 +360,15 @@ func (c *ServerConn) setUTF8() error {
 
 // epsv issues an "EPSV" command to get a port number for a data connection.
 func (c *ServerConn) epsv() (port int, err error) {
+
 	_, line, err := c.cmd(StatusExtendedPassiveMode, "EPSV")
+
 	if err != nil {
 		return
 	}
+
+
+	fmt.Println(line)
 
 	start := strings.Index(line, "|||")
 	end := strings.LastIndex(line, "|")
@@ -420,6 +427,7 @@ func (c *ServerConn) pasv() (host string, port int, err error) {
 // getDataConnPort returns a host, port for a new data connection
 // it uses the best available method to do so
 func (c *ServerConn) getDataConnPort() (string, int, error) {
+
 	if !c.options.disableEPSV && !c.skipEPSV {
 		if port, err := c.epsv(); err == nil {
 			return c.host, port, nil
@@ -434,6 +442,32 @@ func (c *ServerConn) getDataConnPort() (string, int, error) {
 
 // openDataConn creates a new FTP data connection.
 func (c *ServerConn) openDataConn() (net.Conn, error) {
+	host, port, err := c.getDataConnPort()
+
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println(host)
+	fmt.Println(port)
+
+
+	localPort := rand.Intn(1000) + 40000
+	localHost := "1-ff00:0:112,[127.0.0.1]"
+
+	local := localHost + ":" + strconv.Itoa(localPort)
+
+	remotePort := port
+	remoteHost := "1-ff00:0:110,[127.0.0.1]"
+
+	remote := remoteHost + ":" + strconv.Itoa(remotePort)
+
+
+	tconn := client.Connect(local, remote)
+
+	return tconn, nil
+	/*
+
 	host, port, err := c.getDataConnPort()
 	if err != nil {
 		return nil, err
@@ -453,6 +487,7 @@ func (c *ServerConn) openDataConn() (net.Conn, error) {
 	}
 
 	return c.options.dialer.Dial("tcp", addr)
+	 */
 }
 
 // cmd is a helper function to execute a command and check for the expected FTP
@@ -487,6 +522,8 @@ func (c *ServerConn) cmdDataConnFrom(offset uint64, format string, args ...inter
 		conn.Close()
 		return nil, err
 	}
+
+	fmt.Fprintln(conn, "Initialize Quic Stream")
 
 	code, msg, err := c.conn.ReadResponse(-1)
 	if err != nil {
