@@ -6,7 +6,9 @@ package server
 
 import (
 	"fmt"
+	"github.com/elwin/transmit/scion"
 	"log"
+	"math/rand"
 	"strconv"
 	"strings"
 )
@@ -308,15 +310,37 @@ func (cmd commandEpsv) Execute(conn *Conn, param string) {
 		return
 	}
 
-	socket, err := newPassiveSocket(addr[:lastIdx], conn.PassivePort, conn.logger, conn.sessionID, conn.tlsConfig)
+	// socket, err := newPassiveSocket(addr[:lastIdx], conn.PassivePort, conn.logger, conn.sessionID, conn.tlsConfig)
+
+	port := rand.Intn(1000) + 40000
+	host := "1-ff00:0:110,[127.0.0.1]"
+
+	address := host + ":" + strconv.Itoa(port)
+
+
+
+	listener := scion.Listen(address)
+
+	// Somehow connection doesnt get accepted (stream or something
+
+	/*
 	if err != nil {
 		log.Println(err)
 		conn.writeMessage(425, "Data connection failed")
 		return
 	}
 	conn.dataConn = socket
-	msg := fmt.Sprintf("Entering Extended Passive Mode (|||%d|)", socket.Port())
+	 */
+
+
+	msg := fmt.Sprintf("Entering Extended Passive Mode (|||%d|)", port)
 	conn.writeMessage(229, msg)
+
+	stream, _ := listener.Accept()
+
+	socket := ScionSocket{stream, port}
+
+	conn.dataConn = socket
 }
 
 // commandList responds to the LIST FTP command. It allows the client to retreive
@@ -362,6 +386,7 @@ func (cmd commandList) Execute(conn *Conn, param string) {
 	}
 
 	conn.writeMessage(150, "Opening ASCII mode data connection for file list")
+
 	conn.sendOutofbandData(listFormatter(files).Detailed())
 }
 
@@ -583,6 +608,9 @@ func (cmd commandPasv) Execute(conn *Conn, param string) {
 		return
 	}
 	socket, err := newPassiveSocket(listenIP[:lastIdx], conn.PassivePort, conn.logger, conn.sessionID, conn.tlsConfig)
+
+	fmt.Println("Created Socket")
+
 	if err != nil {
 		conn.writeMessage(425, "Data connection failed")
 		return
