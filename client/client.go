@@ -6,15 +6,29 @@ import (
 	"github.com/scionproto/scion/go/lib/sciond"
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/snet/squic"
+	"net"
 )
 
-type connection struct {
-	local   snet.Addr
-	remote  snet.Addr
-	session quic.Session
+type Sconnection struct {
+	quic.Stream
+	local   net.Addr
+	remote  net.Addr
 }
 
-func Connect(local, remote snet.Addr) connection {
+func (connection Sconnection) LocalAddr() net.Addr {
+	return connection.local
+}
+
+func (connection Sconnection) RemoteAddr() net.Addr {
+	return connection.remote
+}
+
+
+func Connect(l, r string) Sconnection {
+
+	local, _ := snet.AddrFromString(l)
+	remote, _ := snet.AddrFromString(r)
+
 
 	sciond := sciond.GetDefaultSCIONDPath(&local.IA)
 	dispatcher := ""
@@ -29,29 +43,19 @@ func Connect(local, remote snet.Addr) connection {
 		log.Error("Failed to initialize SQUIC", "msg", err)
 	}
 
-	session, err := squic.DialSCION(nil, &local, &remote, nil)
+	session, err := squic.DialSCION(nil, local, remote, nil)
 	if err != nil {
 		log.Error("Unable to dial", "err", err)
 	}
 
-	return connection{
-		local:   local,
-		remote:  remote,
-		session: session,
-	}
-}
-
-func (conn connection) OpenStream() quic.Stream {
-	stream, err := conn.session.OpenStreamSync()
+	stream, err := session.OpenStream()
 	if err != nil {
 		log.Error("Unable to open stream", "err", err)
 	}
-	return stream
-}
 
-func (conn connection) Close() {
-	err := conn.session.Close(nil)
-	if err != nil {
-		log.Error("Unable to close session", "err", err)
+	return Sconnection{
+		stream,
+		local,
+		remote,
 	}
 }
