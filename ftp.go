@@ -9,9 +9,9 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/elwin/transmit/client"
+	scion "github.com/elwin/transmit"
+	"github.com/scionproto/scion/go/lib/sock/reliable"
 	"io"
-	"math/rand"
 	"net"
 	"net/textproto"
 	"strconv"
@@ -89,32 +89,18 @@ func Dial(addr string, options ...DialOption) (*ServerConn, error) {
 	tconn := do.conn
 	if tconn == nil {
 
-		local := "1-ff00:0:112,[127.0.0.1]:40001"
+		local := "1-ff00:0:112,[127.0.0.1]:40004"
 		remote := "1-ff00:0:110,[127.0.0.1]:40001"
 
 
-		tconn = client.Connect(local, remote)
-		/*
-		var err error
-
-		if do.dialFunc != nil {
-			tconn, err = do.dialFunc("tcp", addr)
-		} else if do.tlsConfig != nil {
-			tconn, err = tls.DialWithDialer(&do.dialer , "tcp", addr, do.tlsConfig)
-		} else {
-			ctx := do.context
-
-			if ctx == nil {
-				ctx = context.Background()
-			}
-
-			tconn, err = do.dialer.DialContext(ctx, "tcp", addr)
-		}
+		// Why can't I assign directly
+		t, err := scion.Dial(local, remote)
+		tconn = t
 
 		if err != nil {
 			return nil, err
 		}
-		 */
+
 	}
 
 	// Use the resolved IP address in case addr contains a domain name
@@ -442,52 +428,20 @@ func (c *ServerConn) getDataConnPort() (string, int, error) {
 
 // openDataConn creates a new FTP data connection.
 func (c *ServerConn) openDataConn() (net.Conn, error) {
-	host, port, err := c.getDataConnPort()
+	_, port, err := c.getDataConnPort()
 
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println(host)
-	fmt.Println(port)
-
-
-	localPort := rand.Intn(1000) + 40000
-	localHost := "1-ff00:0:112,[127.0.0.1]"
-
-	local := localHost + ":" + strconv.Itoa(localPort)
 
 	remotePort := port
 	remoteHost := "1-ff00:0:110,[127.0.0.1]"
 
 	remote := remoteHost + ":" + strconv.Itoa(remotePort)
 
+	conn, err := reliable.Dial(remote)
 
-	tconn := client.Connect(local, remote)
-
-	return tconn, nil
-	/*
-
-	host, port, err := c.getDataConnPort()
-	if err != nil {
-		return nil, err
-	}
-
-	addr := net.JoinHostPort(host, strconv.Itoa(port))
-	if c.options.dialFunc != nil {
-		return c.options.dialFunc("tcp", addr)
-	}
-
-	if c.options.tlsConfig != nil {
-		conn, err := c.options.dialer.Dial("tcp", addr)
-		if err != nil {
-			return nil, err
-		}
-		return tls.Client(conn, c.options.tlsConfig), err
-	}
-
-	return c.options.dialer.Dial("tcp", addr)
-	 */
+	return conn, err
 }
 
 // cmd is a helper function to execute a command and check for the expected FTP
