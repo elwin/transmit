@@ -6,7 +6,7 @@ package server
 
 import (
 	"fmt"
-	"github.com/elwin/transmit/scion"
+	"github.com/elwin/transmit"
 	"log"
 	"math/rand"
 	"strconv"
@@ -319,16 +319,16 @@ func (cmd commandEpsv) Execute(conn *Conn, param string) {
 
 
 
-	listener := scion.Listen(address)
+	listener, err := scion.Listen(address)
 
 	// Somehow connection doesnt get accepted (stream or something
 
-	/*
 	if err != nil {
 		log.Println(err)
 		conn.writeMessage(425, "Data connection failed")
 		return
 	}
+	/*
 	conn.dataConn = socket
 	 */
 

@@ -7,7 +7,7 @@ package server
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/elwin/transmit/scion"
+	"github.com/elwin/transmit"
 	"io"
 	"net"
 	"os"
@@ -160,7 +160,11 @@ func newPassiveSocket(host string, port func() int, logger Logger, sessionID str
 
 	fmt.Println("Trying to create a socket")
 
-	listener := scion.Listen("1-ff00:0:110,[127.0.0.1]:40002")
+	listener, err := scion.Listen("1-ff00:0:110,[127.0.0.1]:40000")
+
+	if err != nil {
+		return nil, err
+	}
 
 	fmt.Println("Listening")
 

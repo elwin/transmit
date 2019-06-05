@@ -10,7 +10,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/elwin/transmit/scion"
+	"github.com/elwin/transmit"
 	"net"
 	"strconv"
 )
@@ -223,9 +223,7 @@ func (server *Server) ListenAndServe() error {
 		}
 	} else {
 
-		listener = scion.Listen("1-ff00:0:110,[127.0.0.1]:40001")
-		// listener, err = net.Listen("tcp", server.listenTo)
-
+		listener, err = scion.Listen("1-ff00:0:110,[127.0.0.1]:40001")
 
 	}
 	if err != nil {
