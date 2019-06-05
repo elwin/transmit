@@ -25,9 +25,11 @@ func Dial(localAddr, remoteAddr string) (net.Conn, error) {
 	sciond := sciond.GetDefaultSCIONDPath(&local.IA)
 	dispatcher := ""
 
-	err = snet.Init(local.IA, sciond, dispatcher)
-	if err != nil {
-		return nil, fmt.Errorf("failted to initialize SCION: %s", err)
+	if snet.DefNetwork == nil {
+		err = snet.Init(local.IA, sciond, dispatcher)
+		if err != nil {
+			return nil, fmt.Errorf("failted to initialize SCION: %s", err)
+		}
 	}
 
 	err = squic.Init("", "")
