@@ -1,8 +1,7 @@
-package main
+package scion
 
 import (
 	"encoding/gob"
-	"fmt"
 	"github.com/jessevdk/go-flags"
 	"github.com/lucas-clemente/quic-go"
 	"github.com/scionproto/scion/go/examples/transmit/client"
