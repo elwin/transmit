@@ -5,12 +5,14 @@ import (
 	"github.com/elwin/ftp"
 	"log"
 	"os"
+	"strings"
 	"time"
 )
 
 func main() {
 
-	c, err := ftp.Dial("localhost:2121",
+	c, err := ftp.Dial(
+		"1-ff00:0:110,[127.0.0.1]:2121",
 		ftp.DialWithDebugOutput(os.Stdout),
 		ftp.DialWithTimeout(60 * time.Second),
 	)
@@ -24,9 +26,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Do something with the FTP conn
-	// c.Stor("test1.txt", strings.NewReader("My message"))
-	// c.Stor("test2.txt", strings.NewReader("Bye World"))
+	c.Stor("test1.txt", strings.NewReader("My message"))
+	c.Stor("test2.txt", strings.NewReader("Bye World"))
 
 
 	entries, _ := c.List("/")

@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	scion "github.com/elwin/transmit"
-	"github.com/scionproto/scion/go/lib/sock/reliable"
 	"io"
 	"net"
 	"net/textproto"
@@ -27,6 +26,10 @@ const (
 	EntryTypeFile EntryType = iota
 	EntryTypeFolder
 	EntryTypeLink
+)
+
+var (
+	local = "1-ff00:0:112,[127.0.0.1]"
 )
 
 // ServerConn represents the connection to a remote FTP server.
@@ -76,7 +79,7 @@ type Response struct {
 }
 
 // Dial connects to the specified address with optinal options
-func Dial(addr string, options ...DialOption) (*ServerConn, error) {
+func Dial(remote string, options ...DialOption) (*ServerConn, error) {
 	do := &dialOptions{}
 	for _, option := range options {
 		option.setup(do)
@@ -89,11 +92,9 @@ func Dial(addr string, options ...DialOption) (*ServerConn, error) {
 	tconn := do.conn
 	if tconn == nil {
 
-		local := "1-ff00:0:112,[127.0.0.1]:40004"
-		remote := "1-ff00:0:110,[127.0.0.1]:40001"
-
-
 		// Why can't I assign directly
+		// Because of the :=
+		// = won't work because of the err
 		t, err := scion.Dial(local, remote)
 		tconn = t
 
@@ -437,9 +438,9 @@ func (c *ServerConn) openDataConn() (net.Conn, error) {
 	remotePort := port
 	remoteHost := "1-ff00:0:110,[127.0.0.1]"
 
-	remote := remoteHost + ":" + strconv.Itoa(remotePort)
+	remoteAddr := remoteHost + ":" + strconv.Itoa(remotePort)
 
-	conn, err := reliable.Dial(remote)
+	conn, err := scion.Dial(local, remoteAddr)
 
 	return conn, err
 }
