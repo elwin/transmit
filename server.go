@@ -78,6 +78,10 @@ type Server struct {
 	feats     string
 }
 
+func (server Server) HostAddress() string {
+	return server.Hostname + ":" + strconv.Itoa(server.Port)
+}
+
 // ErrServerClosed is returned by ListenAndServe() or Serve() when a shutdown
 // was requested.
 var ErrServerClosed = errors.New("ftp: Server closed")
@@ -223,7 +227,7 @@ func (server *Server) ListenAndServe() error {
 		}
 	} else {
 
-		listener, err = scion.Listen("1-ff00:0:110,[127.0.0.1]:40001")
+		listener, err = scion.Listen(server.HostAddress())
 
 	}
 	if err != nil {

@@ -313,10 +313,8 @@ func (cmd commandEpsv) Execute(conn *Conn, param string) {
 	// socket, err := newPassiveSocket(addr[:lastIdx], conn.PassivePort, conn.logger, conn.sessionID, conn.tlsConfig)
 
 	port := rand.Intn(1000) + 40000
-	host := "1-ff00:0:110,[127.0.0.1]"
 
-	address := host + ":" + strconv.Itoa(port)
-
+	address := conn.server.Hostname + ":" + strconv.Itoa(port)
 
 
 	listener, err := scion.Listen(address)
@@ -328,9 +326,6 @@ func (cmd commandEpsv) Execute(conn *Conn, param string) {
 		conn.writeMessage(425, "Data connection failed")
 		return
 	}
-	/*
-	conn.dataConn = socket
-	 */
 
 
 	msg := fmt.Sprintf("Entering Extended Passive Mode (|||%d|)", port)

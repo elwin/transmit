@@ -20,7 +20,7 @@ func main() {
 		user = flag.String("user", "admin", "Username for login")
 		pass = flag.String("pass", "123456", "Password for login")
 		port = flag.Int("port", 2121, "Port")
-		host = flag.String("host", "localhost", "Port")
+		host = flag.String("host", "1-ff00:0:110,[127.0.0.1]", "Hostname (Format: AS,[IP])")
 	)
 	flag.Parse()
 	if *root == "" {
