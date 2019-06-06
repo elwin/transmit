@@ -53,7 +53,13 @@ func (listener Listener) Accept() (net.Conn, error) {
 	}
 	 */
 
-	return &Connection{stream, conn.LocalAddr(), conn.RemoteAddr()}, nil
+
+
+	return &Connection{
+		stream,
+		conn.LocalAddr(),
+		conn.RemoteAddr(),
+	}, nil
 }
 
 func Listen(address string) (net.Listener, error) {
