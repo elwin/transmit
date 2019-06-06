@@ -1,6 +1,7 @@
 package scion
 
 import (
+	"encoding/gob"
 	"fmt"
 	"github.com/lucas-clemente/quic-go"
 	"github.com/scionproto/scion/go/lib/log"
@@ -29,6 +30,28 @@ func (listener Listener) Accept() (net.Conn, error) {
 	}
 
 	stream, err := conn.AcceptStream()
+
+	var msg Message
+
+	var decoder = gob.NewDecoder(stream)
+
+	err = decoder.Decode(&msg)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debug("Received Handshake", "msg", msg.Data)
+
+	/*
+	var encoder = gob.NewEncoder(stream)
+
+	msg.Data = "Thanks!"
+
+	err = encoder.Encode(&msg)
+	if err != nil {
+		return nil, err
+	}
+	 */
 
 	return &Connection{stream, conn.LocalAddr(), conn.RemoteAddr()}, nil
 }

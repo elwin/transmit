@@ -1,6 +1,7 @@
 package scion
 
 import (
+	"encoding/gob"
 	"fmt"
 	"github.com/scionproto/scion/go/lib/sciond"
 	"github.com/scionproto/scion/go/lib/snet"
@@ -46,6 +47,30 @@ func Dial(localAddr, remoteAddr string) (net.Conn, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to open stream: %s", err)
 	}
+
+	var msg = Message{
+		"Hello World",
+	}
+
+	var encoder = gob.NewEncoder(stream)
+
+	err = encoder.Encode(msg)
+	if err != nil {
+		return nil, err
+	}
+
+	/*
+	var decoder = gob.NewDecoder(stream)
+
+	err = decoder.Decode(&msg)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debug("Received response", "msg", msg.Data)
+
+
+	 */
 
 	return &Connection{
 		stream,
