@@ -4,17 +4,12 @@
 package ftp
 
 import (
-	"bufio"
 	"context"
 	"crypto/tls"
-	"errors"
-	"fmt"
 	scion "github.com/elwin/transmit"
 	"io"
 	"net"
 	"net/textproto"
-	"strconv"
-	"strings"
 	"time"
 )
 
@@ -121,7 +116,7 @@ func Dial(remote string, options ...DialOption) (*ServerConn, error) {
 		features: make(map[string]string),
 		conn:     conn,
 		host:     remoteAddr.String(),
-		logger:	  &StdLogger{},
+		logger:   &StdLogger{},
 	}
 
 	_, _, err := c.conn.ReadResponse(StatusReady)
@@ -190,7 +185,7 @@ func DialWithContext(ctx context.Context) DialOption {
 }
 
 // DialWithTLS returns a DialOption that configures the ServerConn with specified TLS config
-// 
+//
 // If called together with the DialWithDialFunc option, the DialWithDialFunc function
 // will be used when dialing new connections but regardless of the function,
 // the connection will be treated as a TLS connection.
