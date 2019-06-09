@@ -8,7 +8,9 @@ import (
 	"github.com/scionproto/scion/go/lib/sciond"
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/snet/squic"
+	"io"
 	"net"
+	"time"
 )
 
 type Listener struct {
@@ -31,35 +33,44 @@ func (listener Listener) Accept() (net.Conn, error) {
 
 	stream, err := conn.AcceptStream()
 
-	var msg Message
-
-	var decoder = gob.NewDecoder(stream)
-
-	err = decoder.Decode(&msg)
+	err = receiveHandshake(stream)
 	if err != nil {
 		return nil, err
 	}
-
-	log.Debug("Received Handshake", "msg", msg.Data)
-
-	/*
-	var encoder = gob.NewEncoder(stream)
-
-	msg.Data = "Thanks!"
-
-	err = encoder.Encode(&msg)
-	if err != nil {
-		return nil, err
-	}
-	 */
-
-
 
 	return &Connection{
 		stream,
 		conn.LocalAddr(),
 		conn.RemoteAddr(),
 	}, nil
+}
+
+func receiveHandshake(rw io.ReadWriter) error {
+	log.Debug("Waiting for handshake")
+
+	var message Message
+	var decoder = gob.NewDecoder(rw)
+	err := decoder.Decode(&message)
+	if err != nil {
+		return err
+	}
+
+	log.Debug("Received Handshake", "msg", message.Data)
+
+	// Avoid race condition
+	time.Sleep(100 * time.Millisecond)
+
+	var reply = Message{"Yo, this is server speaking"}
+	var encoder = gob.NewEncoder(rw)
+	err = encoder.Encode(&reply)
+	if err != nil {
+		return nil
+	}
+
+	log.Debug("Sent reply")
+
+
+	return nil
 }
 
 func Listen(address string) (net.Listener, error) {
