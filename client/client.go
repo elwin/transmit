@@ -1,45 +1,66 @@
 package main
 
 import (
-	"fmt"
 	"github.com/elwin/ftp"
-	"log"
+	"github.com/scionproto/scion/go/lib/log"
 	"os"
-	"strings"
 	"time"
 )
 
 func main() {
 
-	c, err := ftp.Dial(
+	conn, err := ftp.Dial(
 		"1-ff00:0:110,[127.0.0.1]:2121",
 		ftp.DialWithDebugOutput(os.Stdout),
 		ftp.DialWithTimeout(60 * time.Second),
 	)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Error("Failed to dial", "msg", err)
 	}
 
-	err = c.Login("admin", "123456")
+	err = conn.Login("admin", "123456")
 	if err != nil {
-		log.Fatal(err)
+		log.Error("Failed to authenticate", "msg", err)
 	}
+
+	/*
+	conn.Stor("yolo.txt", strings.NewReader("This data is supposed to be sent and retrieved subsequently"))
+
+
+	response, err := conn.Retr("yolo.txt")
+	if err != nil {
+		log.Error("Retr", "err", err)
+	}
+
+	f, err := os.Create("/home/elwin/ftp/result.txt")
+	if err != nil {
+		log.Error("Creating file", "err", err)
+	}
+
+	written, err := io.Copy(f, response)
+
+	if err != nil {
+		log.Error("Copy data", "err", err)
+	} else {
+		fmt.Println(written)
+	}
+	*/
+
+
+
+	conn.Quit()
+}
+
+
+/*
 
 	c.Stor("test1.txt", strings.NewReader("My message"))
 	c.Stor("test2.txt", strings.NewReader("Bye World"))
 
+	c.MakeDir("yolodir")
+	c.ChangeDir("yolodir")
+	c.Stor("something.txt", strings.NewReader("This is some fancy new stuff"))
+	c.ChangeDirToParent()
 
-	entries, _ := c.List("/")
-	for _, entry := range entries {
-		fmt.Println(entry.Name)
-	}
-
-	// c.Delete("test1.txt")
-	// c.Delete("test2.txt")
-
-
-	if err := c.Quit(); err != nil {
-		log.Fatal(err)
-	}
-}
+*/
