@@ -219,13 +219,19 @@ func (c *ServerConn) openDataConn() (net.Conn, error) {
 
 // cmd is a helper function to execute a command and check for the expected FTP
 // return code
-func (c *ServerConn) cmd(expected int, format string, args ...interface{}) (int, string, error) {
-	_, err := c.conn.Cmd(format, args...)
+func (server *ServerConn) cmd(expected int, format string, args ...interface{}) (int, string, error) {
+	server.logger.PrintCommand(format, args)
+	_, err := server.conn.Cmd(format, args...)
 	if err != nil {
 		return 0, "", err
 	}
 
-	return c.conn.ReadResponse(expected)
+	code, message, err := server.conn.ReadResponse(expected)
+	if err == nil {
+		server.logger.PrintResponse(code, message)
+	}
+
+	return code, message, err
 }
 
 // cmdDataConnFrom executes a command which require a FTP data connection.

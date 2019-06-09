@@ -3,7 +3,6 @@ package main
 import (
 	"github.com/elwin/ftp"
 	"github.com/scionproto/scion/go/lib/log"
-	"os"
 	"time"
 )
 
@@ -11,8 +10,8 @@ func main() {
 
 	conn, err := ftp.Dial(
 		"1-ff00:0:110,[127.0.0.1]:2121",
-		ftp.DialWithDebugOutput(os.Stdout),
-		ftp.DialWithTimeout(60 * time.Second),
+		// ftp.DialWithDebugOutput(os.Stdout),
+		ftp.DialWithTimeout(60*time.Second),
 	)
 
 	if err != nil {
@@ -25,33 +24,30 @@ func main() {
 	}
 
 	/*
-	conn.Stor("yolo.txt", strings.NewReader("This data is supposed to be sent and retrieved subsequently"))
+		conn.Stor("yolo.txt", strings.NewReader("This data is supposed to be sent and retrieved subsequently"))
 
 
-	response, err := conn.Retr("yolo.txt")
-	if err != nil {
-		log.Error("Retr", "err", err)
-	}
+		response, err := conn.Retr("yolo.txt")
+		if err != nil {
+			log.Error("Retr", "err", err)
+		}
 
-	f, err := os.Create("/home/elwin/ftp/result.txt")
-	if err != nil {
-		log.Error("Creating file", "err", err)
-	}
+		f, err := os.Create("/home/elwin/ftp/result.txt")
+		if err != nil {
+			log.Error("Creating file", "err", err)
+		}
 
-	written, err := io.Copy(f, response)
+		written, err := io.Copy(f, response)
 
-	if err != nil {
-		log.Error("Copy data", "err", err)
-	} else {
-		fmt.Println(written)
-	}
+		if err != nil {
+			log.Error("Copy data", "err", err)
+		} else {
+			fmt.Println(written)
+		}
 	*/
-
-
 
 	conn.Quit()
 }
-
 
 /*
 
