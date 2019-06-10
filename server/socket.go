@@ -7,7 +7,7 @@ package server
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/elwin/transmit"
+	"github.com/elwin/transmit/scion"
 	"io"
 	"net"
 	"os"

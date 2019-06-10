@@ -10,7 +10,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/elwin/transmit"
+	"github.com/elwin/transmit/scion"
 	"net"
 	"strconv"
 )
