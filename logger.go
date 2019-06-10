@@ -18,6 +18,7 @@ type Logger interface {
 
 // Use an instance of this to log in a standard format
 type StdLogger struct{}
+var _ Logger = new(StdLogger)
 
 func (logger *StdLogger) Print(sessionId string, message interface{}) {
 	log.Printf("%s  %s", sessionId, message)
@@ -41,6 +42,7 @@ func (logger *StdLogger) PrintResponse(sessionId string, code int, message strin
 
 // Silent logger, produces no output
 type DiscardLogger struct{}
+var _ Logger = new(DiscardLogger)
 
 func (logger *DiscardLogger) Print(sessionId string, message interface{})                  {}
 func (logger *DiscardLogger) Printf(sessionId string, format string, v ...interface{})     {}

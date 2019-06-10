@@ -138,24 +138,24 @@ func isErrorAddressAlreadyInUse(err error) bool {
 
 func newPassiveSocket(host string, port func() int, logger Logger, sessionID string, tlsConfig *tls.Config) (DataSocket, error) {
 	/*
-	socket := new(ftpPassiveSocket)
-	socket.ingress = make(chan []byte)
-	socket.egress = make(chan []byte)
-	socket.logger = logger
-	socket.host = host
-	socket.tlsConfig = tlsConfig
-	const retries = 10
-	var err error
-	for i := 1; i <= retries; i++ {
-		socket.port = port()
-		err = socket.GoListenAndServe(sessionID)
-		if err != nil && socket.port != 0 && isErrorAddressAlreadyInUse(err) {
-			// choose a different port on error already in use
-			continue
+		socket := new(ftpPassiveSocket)
+		socket.ingress = make(chan []byte)
+		socket.egress = make(chan []byte)
+		socket.logger = logger
+		socket.host = host
+		socket.tlsConfig = tlsConfig
+		const retries = 10
+		var err error
+		for i := 1; i <= retries; i++ {
+			socket.port = port()
+			err = socket.GoListenAndServe(sessionID)
+			if err != nil && socket.port != 0 && isErrorAddressAlreadyInUse(err) {
+				// choose a different port on error already in use
+				continue
+			}
+			break
 		}
-		break
-	}
-	return socket, err
+		return socket, err
 	*/
 
 	fmt.Println("Trying to create a socket")
@@ -205,21 +205,33 @@ func (socket *ftpPassiveSocket) ReadFrom(r io.Reader) (int64, error) {
 }
 
 type ScionSocket struct {
-	net.Conn
+	conn scion.Conn
 	port int
 }
 
-func (connection ScionSocket) Host() string {
-	return connection.LocalAddr().String()
+func (socket ScionSocket) Write(p []byte) (n int, err error) {
+	return socket.conn.Write(p)
 }
 
-func (connection ScionSocket) ReadFrom(r io.Reader) (int64, error) {
-	return io.Copy(connection, r)
+func (socket ScionSocket) Close() error {
+	return socket.conn.Close()
 }
 
-func (connection ScionSocket) Port() int {
+func (socket ScionSocket) Host() string {
+	return socket.conn.LocalAddr().Host.String()
+}
 
-	return connection.port
+func (socket ScionSocket) Read(p []byte) (n int, err error) {
+	return socket.conn.Read(p)
+}
+
+func (socket ScionSocket) ReadFrom(r io.Reader) (int64, error) {
+	return io.Copy(socket.conn, r)
+}
+
+func (socket ScionSocket) Port() int {
+
+	return socket.port
 }
 
 func (socket *ftpPassiveSocket) Write(p []byte) (n int, err error) {

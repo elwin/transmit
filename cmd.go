@@ -67,6 +67,7 @@ var (
 		"XCWD": commandCwd{},
 		"XPWD": commandPwd{},
 		"XRMD": commandRmd{},
+		"SPAS": commandSpas{},
 	}
 )
 
@@ -316,17 +317,14 @@ func (cmd commandEpsv) Execute(conn *Conn, param string) {
 
 	address := conn.server.Hostname + ":" + strconv.Itoa(port)
 
-
 	listener, err := scion.Listen(address)
 
 	// Somehow connection doesnt get accepted (stream or something
-
 	if err != nil {
 		log.Println(err)
 		conn.writeMessage(425, "Data connection failed")
 		return
 	}
-
 
 	msg := fmt.Sprintf("Entering Extended Passive Mode (|||%d|)", port)
 	conn.writeMessage(229, msg)
@@ -721,6 +719,9 @@ func (cmd commandRetr) Execute(conn *Conn, param string) {
 		defer data.Close()
 		conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes", bytes))
 		err = conn.sendOutofBandDataWriter(data)
+
+		fmt.Println("Sent message (possibly)")
+
 		if err != nil {
 			conn.writeMessage(551, "Error reading file")
 		}
@@ -1161,4 +1162,46 @@ func (cmd commandUser) Execute(conn *Conn, param string) {
 	} else {
 		conn.writeMessage(534, "Unsecured login not allowed. AUTH TLS required")
 	}
+}
+
+// Extension
+
+type commandSpas struct{}
+
+func (cmd commandSpas) IsExtend() bool {
+	return true
+}
+
+func (cmd commandSpas) RequireParam() bool {
+	return false
+}
+
+func (cmd commandSpas) RequireAuth() bool {
+	return true
+}
+
+func (cmd commandSpas) Execute(conn *Conn, param string) {
+
+	port := rand.Intn(1000) + 40000
+	address := conn.server.Hostname + ":" + strconv.Itoa(port)
+
+	listener, err := scion.Listen(address)
+
+	// Somehow connection doesnt get accepted (stream or something
+	if err != nil {
+		log.Println(err)
+		conn.writeMessage(425, "Data connection failed")
+		return
+	}
+
+	line := "Entering Striped Passive Mode\n"
+	line += " " + address + "\n"
+
+	conn.writeMessageMultiline(229, line)
+
+	stream, _ := listener.Accept()
+
+	socket := ScionSocket{stream, port}
+
+	conn.dataConn = socket
 }

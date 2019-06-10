@@ -71,7 +71,7 @@ type Server struct {
 	*ServerOpts
 	listenTo  string
 	logger    Logger
-	listener  net.Listener
+	listener  scion.Listener
 	tlsConfig *tls.Config
 	ctx       context.Context
 	cancel    context.CancelFunc
@@ -166,12 +166,12 @@ func NewServer(opts *ServerOpts) *Server {
 // an active net.TCPConn. The TCP connection should already be open before
 // it is handed to this functions. driver is an instance of FTPDriver that
 // will handle all auth and persistence details.
-func (server *Server) newConn(tcpConn net.Conn, driver Driver) *Conn {
+func (server *Server) newConn(conn scion.Conn, driver Driver) *Conn {
 	c := new(Conn)
 	c.namePrefix = "/"
-	c.conn = tcpConn
-	c.controlReader = bufio.NewReader(tcpConn)
-	c.controlWriter = bufio.NewWriter(tcpConn)
+	c.conn = conn
+	c.controlReader = bufio.NewReader(conn)
+	c.controlWriter = bufio.NewWriter(conn)
 	c.driver = driver
 	c.auth = server.Auth
 	c.server = server
@@ -208,23 +208,25 @@ func simpleTLSConfig(certFile, keyFile string) (*tls.Config, error) {
 //
 func (server *Server) ListenAndServe() error {
 
-	var listener net.Listener
+	var listener scion.Listener
 	var err error
 	var curFeats = featCmds
 
 	if server.ServerOpts.TLS {
-		server.tlsConfig, err = simpleTLSConfig(server.CertFile, server.KeyFile)
-		if err != nil {
-			return err
-		}
+		/*
+			server.tlsConfig, err = simpleTLSConfig(server.CertFile, server.KeyFile)
+			if err != nil {
+				return err
+			}
 
-		curFeats += " AUTH TLS\n PBSZ\n PROT\n"
+			curFeats += " AUTH TLS\n PBSZ\n PROT\n"
 
-		if server.ServerOpts.ExplicitFTPS {
-			listener, err = net.Listen("tcp", server.listenTo)
-		} else {
-			listener, err = tls.Listen("tcp", server.listenTo, server.tlsConfig)
-		}
+			if server.ServerOpts.ExplicitFTPS {
+				listener, err = net.Listen("tcp", server.listenTo)
+			} else {
+				listener, err = tls.Listen("tcp", server.listenTo, server.tlsConfig)
+			}
+		*/
 	} else {
 
 		listener, err = scion.Listen(server.HostAddress())
@@ -241,10 +243,10 @@ func (server *Server) ListenAndServe() error {
 	return server.Serve(listener)
 }
 
-// Serve accepts connections on a given net.Listener and handles each
+// Serve accepts connections on a given scion.Listener and handles each
 // request in a new goroutine.
 //
-func (server *Server) Serve(l net.Listener) error {
+func (server *Server) Serve(l scion.Listener) error {
 
 	server.listener = l
 	server.ctx, server.cancel = context.WithCancel(context.Background())

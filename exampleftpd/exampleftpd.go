@@ -37,6 +37,7 @@ func main() {
 		Port:     *port,
 		Hostname: *host,
 		Auth:     &server.SimpleAuth{Name: *user, Password: *pass},
+		PublicIp: *host,
 	}
 
 	log.Printf("Starting ftp server on %v:%v", opts.Hostname, opts.Port)
