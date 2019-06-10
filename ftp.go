@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/tls"
 	scion "github.com/elwin/transmit"
+	"github.com/scionproto/scion/go/lib/snet"
 	"io"
 	"net"
 	"net/textproto"
@@ -33,7 +34,7 @@ var (
 type ServerConn struct {
 	options *dialOptions
 	conn    *textproto.Conn
-	host    string
+	remote  snet.Addr
 	logger  Logger
 
 	// Server capabilities discovered at runtime
@@ -100,10 +101,6 @@ func Dial(remote string, options ...DialOption) (*ServerConn, error) {
 
 	}
 
-	// Use the resolved IP address in case addr contains a domain name
-	// If we use the domain name, we might not resolve to the same IP.
-	remoteAddr := tconn.RemoteAddr()
-
 	var sourceConn io.ReadWriteCloser = tconn
 	if do.debugOutput != nil {
 		sourceConn = newDebugWrapper(tconn, do.debugOutput)
@@ -111,11 +108,13 @@ func Dial(remote string, options ...DialOption) (*ServerConn, error) {
 
 	conn := textproto.NewConn(sourceConn)
 
+	rm := tconn.RemoteAddr()
+
 	c := &ServerConn{
 		options:  do,
 		features: make(map[string]string),
 		conn:     conn,
-		host:     remoteAddr.String(),
+		remote:   rm,
 		logger:   &StdLogger{},
 	}
 
