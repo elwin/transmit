@@ -204,16 +204,15 @@ func (server *ServerConn) getDataConnPort() (snet.Addr, int, error) {
 
 // openDataConn creates a new FTP data connection.
 func (server *ServerConn) openDataConn() (scion.Conn, error) {
-	_, port, err := server.getDataConnPort()
+	addr, port, err := server.getDataConnPort()
 
 	if err != nil {
 		return nil, err
 	}
 
-	remotePort := port
-	remoteHost := "1-ff00:0:110,[127.0.0.1]"
+	host := scion.AddrToString(addr)
 
-	remoteAddr := remoteHost + ":" + strconv.Itoa(remotePort)
+	remoteAddr := host + ":" + strconv.Itoa(port)
 
 	conn, err := scion.Dial(local, remoteAddr)
 
