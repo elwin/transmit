@@ -6,7 +6,7 @@ package server
 
 import (
 	"fmt"
-	"github.com/elwin/transmit"
+	"github.com/elwin/transmit/scion"
 	"log"
 	"math/rand"
 	"strconv"

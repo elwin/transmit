@@ -11,7 +11,7 @@ import (
 	"log"
 
 	filedriver "github.com/elwin/file-driver"
-	"github.com/elwin/server"
+	"github.com/elwin/transmit/server"
 )
 
 func main() {

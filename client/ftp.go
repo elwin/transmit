@@ -6,7 +6,7 @@ package ftp
 import (
 	"context"
 	"crypto/tls"
-	scion "github.com/elwin/transmit"
+	"github.com/elwin/transmit/scion"
 	"github.com/scionproto/scion/go/lib/snet"
 	"io"
 	"net"

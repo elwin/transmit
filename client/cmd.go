@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/elwin/transmit/scion"
+	"github.com/scionproto/scion/go/lib/snet"
 
 	"io"
 	"net/textproto"
@@ -185,18 +186,20 @@ func (server *ServerConn) pasv() (host string, port int, err error) {
 
 // getDataConnPort returns a host, port for a new data connection
 // it uses the best available method to do so
-func (server *ServerConn) getDataConnPort() (string, int, error) {
+func (server *ServerConn) getDataConnPort() (snet.Addr, int, error) {
 
 	if !server.options.disableEPSV && !server.skipEPSV {
 		if port, err := server.epsv(); err == nil {
-			return server.host, port, nil
+			return server.remote, port, nil
 		}
 
 		// if there is an error, skip EPSV for the next attempts
 		server.skipEPSV = true
 	}
 
-	return server.pasv()
+	return snet.Addr{}, 0, nil
+
+	// return server.pasv()
 }
 
 // openDataConn creates a new FTP data connection.
@@ -211,9 +214,6 @@ func (server *ServerConn) openDataConn() (scion.Conn, error) {
 	remoteHost := "1-ff00:0:110,[127.0.0.1]"
 
 	remoteAddr := remoteHost + ":" + strconv.Itoa(remotePort)
-
-	h := server.host
-	fmt.Println(h)
 
 	conn, err := scion.Dial(local, remoteAddr)
 

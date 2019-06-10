@@ -11,7 +11,7 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
-	scion "github.com/elwin/transmit"
+	"github.com/elwin/transmit/scion"
 	"io"
 	"log"
 	mrand "math/rand"

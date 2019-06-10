@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/elwin/ftp"
+	"github.com/elwin/transmit/client"
 	"github.com/scionproto/scion/go/lib/log"
 	"io"
 	"os"
