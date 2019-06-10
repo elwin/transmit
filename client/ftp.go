@@ -43,7 +43,7 @@ type ServerConn struct {
 	mlstSupported bool
 }
 
-// DialOption represents an option to start a new connection with Dial
+// DialOption represents an option to start a new connection with DialAddr
 type DialOption struct {
 	setup func(do *dialOptions)
 }
@@ -75,7 +75,7 @@ type Response struct {
 	closed bool
 }
 
-// Dial connects to the specified address with optinal options
+// DialAddr connects to the specified address with optinal options
 func Dial(remote string, options ...DialOption) (*ServerConn, error) {
 	do := &dialOptions{}
 	for _, option := range options {
@@ -92,7 +92,7 @@ func Dial(remote string, options ...DialOption) (*ServerConn, error) {
 		// Why can't I assign directly
 		// Because of the :=
 		// = won't work because of the err
-		t, err := scion.Dial(local, remote)
+		t, err := scion.DialAddr(local, remote)
 		tconn = t
 
 		if err != nil {
@@ -214,7 +214,7 @@ func DialWithDialFunc(f func(network, address string) (net.Conn, error)) DialOpt
 	}}
 }
 
-// Connect is an alias to Dial, for backward compatibility
+// Connect is an alias to DialAddr, for backward compatibility
 func Connect(addr string) (*ServerConn, error) {
 	return Dial(addr)
 }

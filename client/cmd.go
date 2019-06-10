@@ -184,39 +184,75 @@ func (server *ServerConn) pasv() (host string, port int, err error) {
 	return
 }
 
-// getDataConnPort returns a host, port for a new data connection
+// getDataConn returns a host, port for a new data connection
 // it uses the best available method to do so
-func (server *ServerConn) getDataConnPort() (snet.Addr, int, error) {
+func (server *ServerConn) getDataConn() (snet.Addr, error) {
 
 	if !server.options.disableEPSV && !server.skipEPSV {
 		if port, err := server.epsv(); err == nil {
-			return server.remote, port, nil
+
+			host := scion.AddrToString(server.remote)
+			addr, err := snet.AddrFromString(host + ":" + strconv.Itoa(port))
+			return *addr, err
 		}
 
 		// if there is an error, skip EPSV for the next attempts
 		server.skipEPSV = true
 	}
 
-	return snet.Addr{}, 0, nil
+	return snet.Addr{}, nil
 
 	// return server.pasv()
 }
 
+func (server *ServerConn) getDataConns() ([]snet.Addr, error) {
+
+	return server.spas()
+
+}
+
 // openDataConn creates a new FTP data connection.
 func (server *ServerConn) openDataConn() (scion.Conn, error) {
-	addr, port, err := server.getDataConnPort()
+	addr, err := server.getDataConn()
 
 	if err != nil {
 		return nil, err
 	}
 
-	host := scion.AddrToString(addr)
+	laddr, err := snet.AddrFromString(local)
+	if err != nil {
+		return nil, err
+	}
 
-	remoteAddr := host + ":" + strconv.Itoa(port)
-
-	conn, err := scion.Dial(local, remoteAddr)
+	conn, err := scion.Dial(*laddr, addr)
 
 	return conn, err
+}
+
+func (server *ServerConn) openDataConns() ([]scion.Conn, error) {
+
+	addrs, err := server.getDataConns()
+	if err != nil {
+		return nil, err
+	}
+
+	laddr, err := snet.AddrFromString(local)
+	if err != nil {
+		return nil, err
+	}
+
+	var conns []scion.Conn
+
+	for _, addr := range addrs {
+		conn, err := scion.Dial(*laddr, addr)
+		if err != nil {
+			return nil, err
+		}
+
+		conns = append(conns, conn)
+	}
+
+	return conns, nil
 }
 
 // cmd is a helper function to execute a command and check for the expected FTP
@@ -523,30 +559,40 @@ func (server *ServerConn) Quit() error {
 
 // Extensions
 
-func (server *ServerConn) Spas() error {
-	server.dispatchCmd("SPAS")
-
+func (server *ServerConn) spas() ([]snet.Addr, error) {
 	_, line, err := server.cmd(StatusExtendedPassiveMode, "SPAS")
-
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	lines := strings.Split(line, "\n")
+
+	var addrs []snet.Addr
 
 	for _, line = range lines {
 		if !strings.HasPrefix(line, " ") {
 			continue
 		}
 
+		addr, err := snet.AddrFromString(strings.TrimLeft(line, " "))
+		if err != nil {
+			return nil, err
+		}
+
+		addrs = append(addrs, *addr)
 	}
 
-	return nil
+	return addrs, nil
 }
 
 func (server *ServerConn) Eret(path string, offset, length int) error {
 
-	server.dispatchCmd("ERET %s=\"%d,%d\" %s")
+	_, line, err := server.cmd(StatusExtendedPassiveMode, "ERET %s=\"%d,%d\" %s")
+	if err != nil {
+		return nil
+	}
+
+	fmt.Println(line)
 
 	return nil
 }

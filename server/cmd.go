@@ -1182,10 +1182,13 @@ func (cmd commandSpas) RequireAuth() bool {
 
 func (cmd commandSpas) Execute(conn *Conn, param string) {
 
-	port := rand.Intn(1000) + 40000
-	address := conn.server.Hostname + ":" + strconv.Itoa(port)
+	port1 := rand.Intn(1000) + 40000
+	port2 := rand.Intn(1000) + 40000
+	address1 := conn.server.Hostname + ":" + strconv.Itoa(port1)
+	address2 := conn.server.Hostname + ":" + strconv.Itoa(port2)
 
-	listener, err := scion.Listen(address)
+	listener1, err := scion.Listen(address1)
+	listener2, err := scion.Listen(address2)
 
 	// Somehow connection doesnt get accepted (stream or something
 	if err != nil {
@@ -1195,13 +1198,16 @@ func (cmd commandSpas) Execute(conn *Conn, param string) {
 	}
 
 	line := "Entering Striped Passive Mode\n"
-	line += " " + address + "\n"
+	line += " " + address1 + "\n"
+	line += " " + address2 + "\n"
 
 	conn.writeMessageMultiline(229, line)
 
-	stream, _ := listener.Accept()
+	stream1, _ := listener1.Accept()
+	stream2, _ := listener2.Accept()
 
-	socket := ScionSocket{stream, port}
+	socket1 := ScionSocket{stream1, port1}
+	socket2 := ScionSocket{stream2, port2}
 
-	conn.dataConn = socket
+	conn.dataConns = append(conn.dataConns, socket1, socket2)
 }

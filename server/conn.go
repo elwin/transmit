@@ -29,6 +29,7 @@ type Conn struct {
 	controlReader *bufio.Reader
 	controlWriter *bufio.Writer
 	dataConn      DataSocket
+	dataConns     []DataSocket
 	driver        Driver
 	auth          Auth
 	logger        Logger
@@ -132,6 +133,11 @@ func (conn *Conn) Close() {
 		conn.dataConn.Close()
 		conn.dataConn = nil
 	}
+	for _, socket := range conn.dataConns {
+		socket.Close()
+	}
+
+	conn.dataConns = nil
 }
 
 func (conn *Conn) upgradeToTLS() error {

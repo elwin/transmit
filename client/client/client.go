@@ -1,11 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"github.com/elwin/transmit/client"
 	"github.com/scionproto/scion/go/lib/log"
-	"io"
-	"os"
-	"strings"
 	"time"
 )
 
@@ -25,31 +23,33 @@ func main() {
 	if err != nil {
 		log.Error("Failed to authenticate", "msg", err)
 	}
-
-	conn.Stor("yolo.txt", strings.NewReader("This data is supposed to be sent and retrieved subsequently"))
-
-	response, err := conn.Retr("yolo.txt")
-	if err != nil {
-		log.Error("Retr", "err", err)
-	}
-
-	f, err := os.Create("/home/elwin/ftp/result.txt")
-	if err != nil {
-		log.Error("Creating file", "err", err)
-	}
-
-	_, err = io.Copy(f, response)
-
-	if err != nil {
-		log.Error("Copy data", "err", err)
-	}
-
 	/*
-		err = conn.Spas()
+
+		conn.Stor("yolo.txt", strings.NewReader("This data is supposed to be sent and retrieved subsequently"))
+
+		response, err := conn.Retr("yolo.txt")
 		if err != nil {
-			log.Error("Yo spas", "err", err)
+			log.Error("Retr", "err", err)
 		}
+
+		f, err := os.Create("/home/elwin/ftp/result.txt")
+		if err != nil {
+			log.Error("Creating file", "err", err)
+		}
+
+		_, err = io.Copy(f, response)
+
+		if err != nil {
+			log.Error("Copy data", "err", err)
+		}
+
 	*/
+
+	addrs, err := conn.spas()
+	fmt.Println(addrs)
+	if err != nil {
+		log.Error("Yo spas", "err", err)
+	}
 
 	conn.Quit()
 }
