@@ -8,12 +8,10 @@ import (
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/snet/squic"
 	"io"
-	"net"
 	"time"
 )
 
-
-func Dial(localAddr, remoteAddr string) (net.Conn, error) {
+func Dial(localAddr, remoteAddr string) (Conn, error) {
 
 	local, err := snet.AddrFromString(localAddr)
 	if err != nil {
@@ -24,7 +22,6 @@ func Dial(localAddr, remoteAddr string) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-
 
 	sciond := sciond.GetDefaultSCIONDPath(&local.IA)
 	dispatcher := ""
@@ -56,23 +53,10 @@ func Dial(localAddr, remoteAddr string) (net.Conn, error) {
 		return nil, err
 	}
 
-	/*
-	var decoder = gob.NewDecoder(stream)
-
-	err = decoder.Decode(&msg)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Debug("Received response", "msg", msg.Data)
-
-
-	 */
-
 	return &Connection{
 		stream,
-		local,
-		remote,
+		*local,
+		*remote,
 	}, nil
 }
 

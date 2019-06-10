@@ -3,47 +3,13 @@ package scion
 import (
 	"encoding/gob"
 	"fmt"
-	"github.com/lucas-clemente/quic-go"
 	"github.com/scionproto/scion/go/lib/log"
 	"github.com/scionproto/scion/go/lib/sciond"
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/snet/squic"
 	"io"
-	"net"
 	"time"
 )
-
-type Listener struct {
-	quic.Listener
-}
-
-func (listener Listener) Addr() net.Addr {
-	return listener.Listener.Addr()
-}
-
-func (listener Listener) Close() error {
-	return listener.Listener.Close()
-}
-
-func (listener Listener) Accept() (net.Conn, error) {
-	conn, err := listener.Listener.Accept()
-	if err != nil {
-		return nil, fmt.Errorf("couldn't accept SQUIC connection: %s", err)
-	}
-
-	stream, err := conn.AcceptStream()
-
-	err = receiveHandshake(stream)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Connection{
-		stream,
-		conn.LocalAddr(),
-		conn.RemoteAddr(),
-	}, nil
-}
 
 func receiveHandshake(rw io.ReadWriter) error {
 	log.Debug("Waiting for handshake")
@@ -69,11 +35,10 @@ func receiveHandshake(rw io.ReadWriter) error {
 
 	log.Debug("Sent reply")
 
-
 	return nil
 }
 
-func Listen(address string) (net.Listener, error) {
+func Listen(address string) (Listener, error) {
 
 	addr, _ := snet.AddrFromString(address)
 
@@ -100,5 +65,8 @@ func Listen(address string) (net.Listener, error) {
 		log.Error("Unable to listen", "err", err)
 	}
 
-	return &Listener{listener}, nil
+	return &Slistener{
+		listener,
+		*addr,
+	}, nil
 }
