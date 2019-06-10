@@ -6,7 +6,6 @@ import (
 	"fmt"
 	scion "github.com/elwin/transmit"
 	"io"
-	"net"
 	"net/textproto"
 	"strconv"
 	"strings"
@@ -17,8 +16,8 @@ import (
 //
 // "anonymous"/"anonymous" is a common user/password scheme for FTP servers
 // that allows anonymous read-only accounts.
-func (c *ServerConn) Login(user, password string) error {
-	code, message, err := c.cmd(-1, "USER %s", user)
+func (server *ServerConn) Login(user, password string) error {
+	code, message, err := server.cmd(-1, "USER %s", user)
 	if err != nil {
 		return err
 	}
@@ -26,7 +25,7 @@ func (c *ServerConn) Login(user, password string) error {
 	switch code {
 	case StatusLoggedIn:
 	case StatusUserOK:
-		_, _, err = c.cmd(StatusLoggedIn, "PASS %s", password)
+		_, _, err = server.cmd(StatusLoggedIn, "PASS %s", password)
 		if err != nil {
 			return err
 		}
@@ -35,17 +34,17 @@ func (c *ServerConn) Login(user, password string) error {
 	}
 
 	// Switch to binary mode
-	if _, _, err = c.cmd(StatusCommandOK, "TYPE I"); err != nil {
+	if _, _, err = server.cmd(StatusCommandOK, "TYPE I"); err != nil {
 		return err
 	}
 
 	// Switch to UTF-8
-	err = c.setUTF8()
+	err = server.setUTF8()
 
 	// If using implicit TLS, make data connections also use TLS
-	if c.options.tlsConfig != nil {
-		c.cmd(StatusCommandOK, "PBSZ 0")
-		c.cmd(StatusCommandOK, "PROT P")
+	if server.options.tlsConfig != nil {
+		server.cmd(StatusCommandOK, "PBSZ 0")
+		server.cmd(StatusCommandOK, "PROT P")
 	}
 
 	return err
@@ -54,8 +53,8 @@ func (c *ServerConn) Login(user, password string) error {
 // feat issues a FEAT FTP command to list the additional commands supported by
 // the remote FTP server.
 // FEAT is described in RFC 2389
-func (c *ServerConn) feat() error {
-	code, message, err := c.cmd(-1, "FEAT")
+func (server *ServerConn) feat() error {
+	code, message, err := server.cmd(-1, "FEAT")
 	if err != nil {
 		return err
 	}
@@ -82,19 +81,19 @@ func (c *ServerConn) feat() error {
 			commandDesc = featureElements[1]
 		}
 
-		c.features[command] = commandDesc
+		server.features[command] = commandDesc
 	}
 
 	return nil
 }
 
 // setUTF8 issues an "OPTS UTF8 ON" command.
-func (c *ServerConn) setUTF8() error {
-	if _, ok := c.features["UTF8"]; !ok {
+func (server *ServerConn) setUTF8() error {
+	if _, ok := server.features["UTF8"]; !ok {
 		return nil
 	}
 
-	code, message, err := c.cmd(-1, "OPTS UTF8 ON")
+	code, message, err := server.cmd(-1, "OPTS UTF8 ON")
 	if err != nil {
 		return err
 	}
@@ -119,9 +118,9 @@ func (c *ServerConn) setUTF8() error {
 }
 
 // epsv issues an "EPSV" command to get a port number for a data connection.
-func (c *ServerConn) epsv() (port int, err error) {
+func (server *ServerConn) epsv() (port int, err error) {
 
-	_, line, err := c.cmd(StatusExtendedPassiveMode, "EPSV")
+	_, line, err := server.cmd(StatusExtendedPassiveMode, "EPSV")
 
 	if err != nil {
 		return
@@ -140,8 +139,8 @@ func (c *ServerConn) epsv() (port int, err error) {
 }
 
 // pasv issues a "PASV" command to get a port number for a data connection.
-func (c *ServerConn) pasv() (host string, port int, err error) {
-	_, line, err := c.cmd(StatusPassiveMode, "PASV")
+func (server *ServerConn) pasv() (host string, port int, err error) {
+	_, line, err := server.cmd(StatusPassiveMode, "PASV")
 	if err != nil {
 		return
 	}
@@ -185,23 +184,23 @@ func (c *ServerConn) pasv() (host string, port int, err error) {
 
 // getDataConnPort returns a host, port for a new data connection
 // it uses the best available method to do so
-func (c *ServerConn) getDataConnPort() (string, int, error) {
+func (server *ServerConn) getDataConnPort() (string, int, error) {
 
-	if !c.options.disableEPSV && !c.skipEPSV {
-		if port, err := c.epsv(); err == nil {
-			return c.host, port, nil
+	if !server.options.disableEPSV && !server.skipEPSV {
+		if port, err := server.epsv(); err == nil {
+			return server.host, port, nil
 		}
 
 		// if there is an error, skip EPSV for the next attempts
-		c.skipEPSV = true
+		server.skipEPSV = true
 	}
 
-	return c.pasv()
+	return server.pasv()
 }
 
 // openDataConn creates a new FTP data connection.
-func (c *ServerConn) openDataConn() (net.Conn, error) {
-	_, port, err := c.getDataConnPort()
+func (server *ServerConn) openDataConn() (scion.Conn, error) {
+	_, port, err := server.getDataConnPort()
 
 	if err != nil {
 		return nil, err
@@ -212,6 +211,9 @@ func (c *ServerConn) openDataConn() (net.Conn, error) {
 
 	remoteAddr := remoteHost + ":" + strconv.Itoa(remotePort)
 
+	h := server.host
+	fmt.Println(h)
+
 	conn, err := scion.Dial(local, remoteAddr)
 
 	return conn, err
@@ -220,8 +222,7 @@ func (c *ServerConn) openDataConn() (net.Conn, error) {
 // cmd is a helper function to execute a command and check for the expected FTP
 // return code
 func (server *ServerConn) cmd(expected int, format string, args ...interface{}) (int, string, error) {
-	server.logger.PrintCommand(format, args)
-	_, err := server.conn.Cmd(format, args...)
+	err := server.dispatchCmd(format, args...)
 	if err != nil {
 		return 0, "", err
 	}
@@ -234,29 +235,35 @@ func (server *ServerConn) cmd(expected int, format string, args ...interface{}) 
 	return code, message, err
 }
 
+func (server *ServerConn) dispatchCmd(format string, args ...interface{}) error {
+	server.logger.PrintCommand(format, args...)
+	_, err := server.conn.Cmd(format, args...)
+	return err
+}
+
 // cmdDataConnFrom executes a command which require a FTP data connection.
 // Issues a REST FTP command to specify the number of bytes to skip for the transfer.
-func (c *ServerConn) cmdDataConnFrom(offset uint64, format string, args ...interface{}) (net.Conn, error) {
-	conn, err := c.openDataConn()
+func (server *ServerConn) cmdDataConnFrom(offset uint64, format string, args ...interface{}) (scion.Conn, error) {
+	conn, err := server.openDataConn()
 	if err != nil {
 		return nil, err
 	}
 
 	if offset != 0 {
-		_, _, err := c.cmd(StatusRequestFilePending, "REST %d", offset)
+		_, _, err := server.cmd(StatusRequestFilePending, "REST %d", offset)
 		if err != nil {
 			conn.Close()
 			return nil, err
 		}
 	}
 
-	_, err = c.conn.Cmd(format, args...)
+	err = server.dispatchCmd(format, args...)
 	if err != nil {
 		conn.Close()
 		return nil, err
 	}
 
-	code, msg, err := c.conn.ReadResponse(-1)
+	code, msg, err := server.conn.ReadResponse(-1)
 	if err != nil {
 		conn.Close()
 		return nil, err
@@ -270,13 +277,13 @@ func (c *ServerConn) cmdDataConnFrom(offset uint64, format string, args ...inter
 }
 
 // NameList issues an NLST FTP command.
-func (c *ServerConn) NameList(path string) (entries []string, err error) {
-	conn, err := c.cmdDataConnFrom(0, "NLST %s", path)
+func (server *ServerConn) NameList(path string) (entries []string, err error) {
+	conn, err := server.cmdDataConnFrom(0, "NLST %s", path)
 	if err != nil {
 		return
 	}
 
-	r := &Response{conn: conn, c: c}
+	r := &Response{conn: conn, c: server}
 	defer r.Close()
 
 	scanner := bufio.NewScanner(r)
@@ -290,11 +297,11 @@ func (c *ServerConn) NameList(path string) (entries []string, err error) {
 }
 
 // List issues a LIST FTP command.
-func (c *ServerConn) List(path string) (entries []*Entry, err error) {
+func (server *ServerConn) List(path string) (entries []*Entry, err error) {
 	var cmd string
 	var parser parseFunc
 
-	if c.mlstSupported {
+	if server.mlstSupported {
 		cmd = "MLSD"
 		parser = parseRFC3659ListLine
 	} else {
@@ -302,18 +309,18 @@ func (c *ServerConn) List(path string) (entries []*Entry, err error) {
 		parser = parseListLine
 	}
 
-	conn, err := c.cmdDataConnFrom(0, "%s %s", cmd, path)
+	conn, err := server.cmdDataConnFrom(0, "%s %s", cmd, path)
 	if err != nil {
 		return
 	}
 
-	r := &Response{conn: conn, c: c}
+	r := &Response{conn: conn, c: server}
 	defer r.Close()
 
 	scanner := bufio.NewScanner(r)
 	now := time.Now()
 	for scanner.Scan() {
-		entry, err := parser(scanner.Text(), now, c.options.location)
+		entry, err := parser(scanner.Text(), now, server.options.location)
 		if err == nil {
 			entries = append(entries, entry)
 		}
@@ -326,23 +333,23 @@ func (c *ServerConn) List(path string) (entries []*Entry, err error) {
 
 // ChangeDir issues a CWD FTP command, which changes the current directory to
 // the specified path.
-func (c *ServerConn) ChangeDir(path string) error {
-	_, _, err := c.cmd(StatusRequestedFileActionOK, "CWD %s", path)
+func (server *ServerConn) ChangeDir(path string) error {
+	_, _, err := server.cmd(StatusRequestedFileActionOK, "CWD %s", path)
 	return err
 }
 
 // ChangeDirToParent issues a CDUP FTP command, which changes the current
 // directory to the parent directory.  This is similar to a call to ChangeDir
 // with a path set to "..".
-func (c *ServerConn) ChangeDirToParent() error {
-	_, _, err := c.cmd(StatusRequestedFileActionOK, "CDUP")
+func (server *ServerConn) ChangeDirToParent() error {
+	_, _, err := server.cmd(StatusRequestedFileActionOK, "CDUP")
 	return err
 }
 
 // CurrentDir issues a PWD FTP command, which Returns the path of the current
 // directory.
-func (c *ServerConn) CurrentDir() (string, error) {
-	_, msg, err := c.cmd(StatusPathCreated, "PWD")
+func (server *ServerConn) CurrentDir() (string, error) {
+	_, msg, err := server.cmd(StatusPathCreated, "PWD")
 	if err != nil {
 		return "", err
 	}
@@ -358,8 +365,8 @@ func (c *ServerConn) CurrentDir() (string, error) {
 }
 
 // FileSize issues a SIZE FTP command, which Returns the size of the file
-func (c *ServerConn) FileSize(path string) (int64, error) {
-	_, msg, err := c.cmd(StatusFile, "SIZE %s", path)
+func (server *ServerConn) FileSize(path string) (int64, error) {
+	_, msg, err := server.cmd(StatusFile, "SIZE %s", path)
 	if err != nil {
 		return 0, err
 	}
@@ -371,29 +378,29 @@ func (c *ServerConn) FileSize(path string) (int64, error) {
 // FTP server.
 //
 // The returned ReadCloser must be closed to cleanup the FTP data connection.
-func (c *ServerConn) Retr(path string) (*Response, error) {
-	return c.RetrFrom(path, 0)
+func (server *ServerConn) Retr(path string) (*Response, error) {
+	return server.RetrFrom(path, 0)
 }
 
 // RetrFrom issues a RETR FTP command to fetch the specified file from the remote
 // FTP server, the server will not send the offset first bytes of the file.
 //
 // The returned ReadCloser must be closed to cleanup the FTP data connection.
-func (c *ServerConn) RetrFrom(path string, offset uint64) (*Response, error) {
-	conn, err := c.cmdDataConnFrom(offset, "RETR %s", path)
+func (server *ServerConn) RetrFrom(path string, offset uint64) (*Response, error) {
+	conn, err := server.cmdDataConnFrom(offset, "RETR %s", path)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Response{conn: conn, c: c}, nil
+	return &Response{conn: conn, c: server}, nil
 }
 
 // Stor issues a STOR FTP command to store a file to the remote FTP server.
 // Stor creates the specified file with the content of the io.Reader.
 //
 // Hint: io.Pipe() can be used if an io.Writer is required.
-func (c *ServerConn) Stor(path string, r io.Reader) error {
-	return c.StorFrom(path, r, 0)
+func (server *ServerConn) Stor(path string, r io.Reader) error {
+	return server.StorFrom(path, r, 0)
 }
 
 // StorFrom issues a STOR FTP command to store a file to the remote FTP server.
@@ -401,8 +408,8 @@ func (c *ServerConn) Stor(path string, r io.Reader) error {
 // on the server will start at the given file offset.
 //
 // Hint: io.Pipe() can be used if an io.Writer is required.
-func (c *ServerConn) StorFrom(path string, r io.Reader, offset uint64) error {
-	conn, err := c.cmdDataConnFrom(offset, "STOR %s", path)
+func (server *ServerConn) StorFrom(path string, r io.Reader, offset uint64) error {
+	conn, err := server.cmdDataConnFrom(offset, "STOR %s", path)
 	if err != nil {
 		return err
 	}
@@ -413,41 +420,41 @@ func (c *ServerConn) StorFrom(path string, r io.Reader, offset uint64) error {
 		return err
 	}
 
-	_, _, err = c.conn.ReadResponse(StatusClosingDataConnection)
+	_, _, err = server.conn.ReadResponse(StatusClosingDataConnection)
 	return err
 }
 
 // Rename renames a file on the remote FTP server.
-func (c *ServerConn) Rename(from, to string) error {
-	_, _, err := c.cmd(StatusRequestFilePending, "RNFR %s", from)
+func (server *ServerConn) Rename(from, to string) error {
+	_, _, err := server.cmd(StatusRequestFilePending, "RNFR %s", from)
 	if err != nil {
 		return err
 	}
 
-	_, _, err = c.cmd(StatusRequestedFileActionOK, "RNTO %s", to)
+	_, _, err = server.cmd(StatusRequestedFileActionOK, "RNTO %s", to)
 	return err
 }
 
 // Delete issues a DELE FTP command to delete the specified file from the
 // remote FTP server.
-func (c *ServerConn) Delete(path string) error {
-	_, _, err := c.cmd(StatusRequestedFileActionOK, "DELE %s", path)
+func (server *ServerConn) Delete(path string) error {
+	_, _, err := server.cmd(StatusRequestedFileActionOK, "DELE %s", path)
 	return err
 }
 
 // RemoveDirRecur deletes a non-empty folder recursively using
 // RemoveDir and Delete
-func (c *ServerConn) RemoveDirRecur(path string) error {
-	err := c.ChangeDir(path)
+func (server *ServerConn) RemoveDirRecur(path string) error {
+	err := server.ChangeDir(path)
 	if err != nil {
 		return err
 	}
-	currentDir, err := c.CurrentDir()
+	currentDir, err := server.CurrentDir()
 	if err != nil {
 		return err
 	}
 
-	entries, err := c.List(currentDir)
+	entries, err := server.List(currentDir)
 	if err != nil {
 		return err
 	}
@@ -455,63 +462,93 @@ func (c *ServerConn) RemoveDirRecur(path string) error {
 	for _, entry := range entries {
 		if entry.Name != ".." && entry.Name != "." {
 			if entry.Type == EntryTypeFolder {
-				err = c.RemoveDirRecur(currentDir + "/" + entry.Name)
+				err = server.RemoveDirRecur(currentDir + "/" + entry.Name)
 				if err != nil {
 					return err
 				}
 			} else {
-				err = c.Delete(entry.Name)
+				err = server.Delete(entry.Name)
 				if err != nil {
 					return err
 				}
 			}
 		}
 	}
-	err = c.ChangeDirToParent()
+	err = server.ChangeDirToParent()
 	if err != nil {
 		return err
 	}
-	err = c.RemoveDir(currentDir)
+	err = server.RemoveDir(currentDir)
 	return err
 }
 
 // MakeDir issues a MKD FTP command to create the specified directory on the
 // remote FTP server.
-func (c *ServerConn) MakeDir(path string) error {
-	_, _, err := c.cmd(StatusPathCreated, "MKD %s", path)
+func (server *ServerConn) MakeDir(path string) error {
+	_, _, err := server.cmd(StatusPathCreated, "MKD %s", path)
 	return err
 }
 
 // RemoveDir issues a RMD FTP command to remove the specified directory from
 // the remote FTP server.
-func (c *ServerConn) RemoveDir(path string) error {
-	_, _, err := c.cmd(StatusRequestedFileActionOK, "RMD %s", path)
+func (server *ServerConn) RemoveDir(path string) error {
+	_, _, err := server.cmd(StatusRequestedFileActionOK, "RMD %s", path)
 	return err
 }
 
 // NoOp issues a NOOP FTP command.
 // NOOP has no effects and is usually used to prevent the remote FTP server to
 // close the otherwise idle connection.
-func (c *ServerConn) NoOp() error {
-	_, _, err := c.cmd(StatusCommandOK, "NOOP")
+func (server *ServerConn) NoOp() error {
+	_, _, err := server.cmd(StatusCommandOK, "NOOP")
 	return err
 }
 
 // Logout issues a REIN FTP command to logout the current user.
-func (c *ServerConn) Logout() error {
-	_, _, err := c.cmd(StatusReady, "REIN")
+func (server *ServerConn) Logout() error {
+	_, _, err := server.cmd(StatusReady, "REIN")
 	return err
 }
 
 // Quit issues a QUIT FTP command to properly close the connection from the
 // remote FTP server.
-func (c *ServerConn) Quit() error {
-	c.conn.Cmd("QUIT")
+func (server *ServerConn) Quit() error {
+	server.dispatchCmd("QUIT")
 
 	// Otherwise data connection will be closed before data is even sent
 	time.Sleep(100 * time.Millisecond)
 
-	return c.conn.Close()
+	return server.conn.Close()
+}
+
+// Extensions
+
+func (server *ServerConn) Spas() error {
+	server.dispatchCmd("SPAS")
+
+	_, line, err := server.cmd(StatusExtendedPassiveMode, "SPAS")
+
+	if err != nil {
+		return err
+	}
+
+	lines := strings.Split(line, "\n")
+
+	for _, line = range lines {
+		if !strings.HasPrefix(line, " ") {
+			continue
+		}
+
+	}
+
+	return nil
+}
+
+func (server *ServerConn) Eret(path string, offset, length int) error {
+
+	server.dispatchCmd("ERET %s=\"%d,%d\" %s")
+
+	return nil
 }
 
 // Read implements the io.Reader interface on a FTP data connection.

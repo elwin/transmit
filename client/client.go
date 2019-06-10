@@ -25,6 +25,7 @@ func main() {
 	if err != nil {
 		log.Error("Failed to authenticate", "msg", err)
 	}
+
 	conn.Stor("yolo.txt", strings.NewReader("This data is supposed to be sent and retrieved subsequently"))
 
 	response, err := conn.Retr("yolo.txt")
@@ -42,6 +43,13 @@ func main() {
 	if err != nil {
 		log.Error("Copy data", "err", err)
 	}
+
+	/*
+		err = conn.Spas()
+		if err != nil {
+			log.Error("Yo spas", "err", err)
+		}
+	*/
 
 	conn.Quit()
 }

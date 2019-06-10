@@ -52,7 +52,7 @@ type dialOptions struct {
 	context     context.Context
 	dialer      net.Dialer
 	tlsConfig   *tls.Config
-	conn        net.Conn
+	conn        scion.Conn
 	disableEPSV bool
 	location    *time.Location
 	debugOutput io.Writer
@@ -69,7 +69,7 @@ type Entry struct {
 
 // Response represents a data-connection
 type Response struct {
-	conn   net.Conn
+	conn   scion.Conn
 	c      *ServerConn
 	closed bool
 }
@@ -154,7 +154,7 @@ func DialWithDialer(dialer net.Dialer) DialOption {
 }
 
 // DialWithNetConn returns a DialOption that configures the ServerConn with the underlying net.Conn
-func DialWithNetConn(conn net.Conn) DialOption {
+func DialWithNetConn(conn scion.Conn) DialOption {
 	return DialOption{func(do *dialOptions) {
 		do.conn = conn
 	}}

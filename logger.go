@@ -12,7 +12,7 @@ import (
 type Logger interface {
 	Print(message interface{})
 	Printf(format string, v ...interface{})
-	PrintCommand(command string, params interface{})
+	PrintCommand(command string, params ...interface{})
 	PrintResponse(code int, message interface{})
 }
 
@@ -29,7 +29,7 @@ func (logger *StdLogger) Printf(format string, v ...interface{}) {
 	logger.Print(fmt.Sprintf(format, v...))
 }
 
-func (logger *StdLogger) PrintCommand(command string, params interface{}) {
+func (logger *StdLogger) PrintCommand(command string, params ...interface{}) {
 	if command == "PASS" {
 		log.Printf("> PASS ****")
 	} else {
@@ -46,7 +46,7 @@ type DiscardLogger struct{}
 
 var _ Logger = new(DiscardLogger)
 
-func (logger *DiscardLogger) Print(message interface{})                       {}
-func (logger *DiscardLogger) Printf(format string, v ...interface{})          {}
-func (logger *DiscardLogger) PrintCommand(command string, params interface{}) {}
-func (logger *DiscardLogger) PrintResponse(code int, message interface{})     {}
+func (logger *DiscardLogger) Print(message interface{})                          {}
+func (logger *DiscardLogger) Printf(format string, v ...interface{})             {}
+func (logger *DiscardLogger) PrintCommand(command string, params ...interface{}) {}
+func (logger *DiscardLogger) PrintResponse(code int, message interface{})        {}
