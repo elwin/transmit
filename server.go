@@ -255,7 +255,7 @@ func (server *Server) Serve(l scion.Listener) error {
 
 		fmt.Println("Waiting for connection")
 
-		tcpConn, err := server.listener.Accept()
+		conn, err := server.listener.Accept()
 
 		fmt.Println("Accepted connection")
 
@@ -274,9 +274,9 @@ func (server *Server) Serve(l scion.Listener) error {
 		driver, err := server.Factory.NewDriver()
 		if err != nil {
 			server.logger.Printf(sessionID, "Error creating driver, aborting client connection: %v", err)
-			tcpConn.Close()
+			conn.Close()
 		} else {
-			ftpConn := server.newConn(tcpConn, driver)
+			ftpConn := server.newConn(conn, driver)
 			go ftpConn.Serve()
 		}
 	}
