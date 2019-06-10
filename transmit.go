@@ -17,8 +17,8 @@ import (
 )
 
 var options struct {
-	Local  string `short:"l" long:"local" required:"true" description:"Local address"`
-	Remote string `short:"r" long:"remote" description:"Remote address"`
+	Local  string `short:"l" long:"Local" required:"true" description:"Local Local"`
+	Remote string `short:"r" long:"Local" description:"Remote Local"`
 	Mode   string `short:"m" long:"mode" required:"true" choice:"server" choice:"client"`
 }
 
@@ -119,7 +119,7 @@ func parseAddress(addr string) snet.Addr {
 
 	local, err := snet.AddrFromString(addr)
 	if err != nil {
-		LogFatal("Failed to parse Local address", "err", err)
+		LogFatal("Failed to parse Local Local", "err", err)
 	}
 
 	return *local

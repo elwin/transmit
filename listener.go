@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/lucas-clemente/quic-go"
 	"github.com/scionproto/scion/go/lib/snet"
+	"strings"
 )
 
 type Listener interface {
@@ -12,28 +13,36 @@ type Listener interface {
 	Accept() (Conn, error)
 }
 
-var _ Listener = Slistener{}
+var _ Listener = ScionListener{}
 
-type Slistener struct {
+type ScionListener struct {
 	quicListener quic.Listener
-	address      snet.Addr
+	local        snet.Addr
 }
 
-func (listener Slistener) Addr() snet.Addr {
-	return listener.address
+func (listener ScionListener) Addr() snet.Addr {
+	return listener.local
 }
 
-func (listener Slistener) Close() error {
+func (listener ScionListener) Close() error {
 	return listener.quicListener.Close()
 }
 
-func (listener Slistener) Accept() (Conn, error) {
-	conn, err := listener.quicListener.Accept()
+func (listener ScionListener) Accept() (Conn, error) {
+	session, err := listener.quicListener.Accept()
 	if err != nil {
 		return nil, fmt.Errorf("couldn't accept SQUIC connection: %s", err)
 	}
 
-	stream, err := conn.AcceptStream()
+	remote := session.RemoteAddr().String()
+	remote = strings.Split(remote, " ")[0]
+
+	remoteAddr, err := snet.AddrFromString(remote)
+	if err != nil {
+		return nil, err
+	}
+
+	stream, err := session.AcceptStream()
 
 	err = receiveHandshake(stream)
 	if err != nil {
@@ -42,7 +51,7 @@ func (listener Slistener) Accept() (Conn, error) {
 
 	return &Connection{
 		stream,
-		snet.Addr{},
-		snet.Addr{},
+		listener.local,
+		*remoteAddr,
 	}, nil
 }

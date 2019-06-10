@@ -65,7 +65,7 @@ func Listen(address string) (Listener, error) {
 		log.Error("Unable to listen", "err", err)
 	}
 
-	return &Slistener{
+	return &ScionListener{
 		listener,
 		*addr,
 	}, nil

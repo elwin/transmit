@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Copied from the net package
+// Copied from the net package and replaced net.Addr with snet.Addr
 type Conn interface {
 	// Read reads data from the connection.
 	// Read can be made to time out and return an Error with Timeout() == true
@@ -22,10 +22,10 @@ type Conn interface {
 	// Any blocked Read or Write operations will be unblocked and return errors.
 	Close() error
 
-	// LocalAddr returns the local network address.
+	// LocalAddr returns the Local network Local.
 	LocalAddr() snet.Addr
 
-	// RemoteAddr returns the remote network address.
+	// RemoteAddr returns the Local network Local.
 	RemoteAddr() snet.Addr
 
 	// SetDeadline sets the read and write deadlines associated
@@ -62,14 +62,14 @@ var _ Conn = Connection{}
 
 type Connection struct {
 	quic.Stream
-	local  snet.Addr
-	remote snet.Addr
+	Local  snet.Addr
+	Remote snet.Addr
 }
 
 func (connection Connection) LocalAddr() snet.Addr {
-	return connection.local
+	return connection.Local
 }
 
 func (connection Connection) RemoteAddr() snet.Addr {
-	return connection.remote
+	return connection.Remote
 }
