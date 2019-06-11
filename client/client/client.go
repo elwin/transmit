@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/elwin/transmit/client"
 	"github.com/scionproto/scion/go/lib/log"
 	"time"
@@ -45,8 +44,7 @@ func main() {
 
 	*/
 
-	addrs, err := conn.spas()
-	fmt.Println(addrs)
+	err = conn.Eret("test.txt", 0, 100)
 	if err != nil {
 		log.Error("Yo spas", "err", err)
 	}

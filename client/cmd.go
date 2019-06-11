@@ -587,11 +587,24 @@ func (server *ServerConn) spas() ([]snet.Addr, error) {
 
 func (server *ServerConn) Eret(path string, offset, length int) error {
 
-	_, line, err := server.cmd(StatusExtendedPassiveMode, "ERET %s=\"%d,%d\" %s")
+	conns, err := server.openDataConns()
+
 	if err != nil {
+		for _, conn := range conns {
+			conn.Close()
+		}
+
 		return nil
 	}
 
+	_, line, err := server.cmd(StatusExtendedPassiveMode, "ERET %s=\"%d,%d\" %s")
+	if err != nil {
+		for _, conn := range conns {
+			conn.Close()
+		}
+
+		return nil
+	}
 	fmt.Println(line)
 
 	return nil

@@ -6,6 +6,7 @@ package server
 
 import (
 	"fmt"
+	ftp "github.com/elwin/transmit/client"
 	"github.com/elwin/transmit/scion"
 	"log"
 	"math/rand"
@@ -68,6 +69,7 @@ var (
 		"XPWD": commandPwd{},
 		"XRMD": commandRmd{},
 		"SPAS": commandSpas{},
+		"ERET": commandEret{},
 	}
 )
 
@@ -515,7 +517,15 @@ func (cmd commandMode) RequireAuth() bool {
 
 func (cmd commandMode) Execute(conn *Conn, param string) {
 	if strings.ToUpper(param) == "S" {
+		// Stream Mode
+		conn.extendedMode = false
 		conn.writeMessage(200, "OK")
+
+	} else if strings.ToUpper(param) == "E" {
+		// Extended Block Mode
+		conn.extendedMode = true
+		conn.writeMessage(200, "OK")
+
 	} else {
 		conn.writeMessage(504, "MODE is an obsolete command")
 	}
@@ -719,8 +729,6 @@ func (cmd commandRetr) Execute(conn *Conn, param string) {
 		defer data.Close()
 		conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes", bytes))
 		err = conn.sendOutofBandDataWriter(data)
-
-		fmt.Println("Sent message (possibly)")
 
 		if err != nil {
 			conn.writeMessage(551, "Error reading file")
@@ -1198,8 +1206,8 @@ func (cmd commandSpas) Execute(conn *Conn, param string) {
 	}
 
 	line := "Entering Striped Passive Mode\n"
-	line += " " + address1 + "\n"
-	line += " " + address2 + "\n"
+	line += " " + address1 + "\r\n"
+	line += " " + address2 + "\r\n"
 
 	conn.writeMessageMultiline(229, line)
 
@@ -1210,4 +1218,26 @@ func (cmd commandSpas) Execute(conn *Conn, param string) {
 	socket2 := ScionSocket{stream2, port2}
 
 	conn.dataConns = append(conn.dataConns, socket1, socket2)
+}
+
+type commandEret struct{}
+
+func (commandEret) IsExtend() bool {
+	return true
+}
+
+func (commandEret) RequireParam() bool {
+	return true
+}
+
+func (commandEret) RequireAuth() bool {
+	return true
+}
+
+func (commandEret) Execute(conn *Conn, param string) error {
+	fmt.Println(param)
+
+	conn.writeMessage(ftp.StatusNotImplemented, "Hey there, sexy")
+
+	return nil
 }

@@ -44,6 +44,7 @@ type Conn struct {
 	appendData    bool
 	closed        bool
 	tls           bool
+	extendedMode  bool
 }
 
 func (conn *Conn) LoginUser() string {
