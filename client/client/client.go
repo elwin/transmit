@@ -3,6 +3,9 @@ package main
 import (
 	"github.com/elwin/transmit/client"
 	"github.com/scionproto/scion/go/lib/log"
+	"io"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -27,32 +30,45 @@ func main() {
 	if err != nil {
 		log.Error("Could not switch mode", "err", err)
 	}
+
+	conn.Stor("yolo.txt", strings.NewReader("This data is supposed to be sent and retrieved subsequently"))
+
 	/*
+			response, err := conn.Retr("yolo.txt")
+			if err != nil {
+				log.Error("Retr", "err", err)
+			}
 
-		conn.Stor("yolo.txt", strings.NewReader("This data is supposed to be sent and retrieved subsequently"))
+			f, err := os.Create("/home/elwin/ftp/result.txt")
+			if err != nil {
+				log.Error("Creating file", "err", err)
+			}
 
-		response, err := conn.Retr("yolo.txt")
-		if err != nil {
-			log.Error("Retr", "err", err)
-		}
-
-		f, err := os.Create("/home/elwin/ftp/result.txt")
-		if err != nil {
-			log.Error("Creating file", "err", err)
-		}
 
 		_, err = io.Copy(f, response)
 
 		if err != nil {
 			log.Error("Copy data", "err", err)
 		}
-
 	*/
 
-	err = conn.Eret("test.txt", 0, 100)
+	response, err := conn.Eret("yolo.txt", 0, 100)
 	if err != nil {
-		log.Error("Yo spas", "err", err)
+		log.Error("failed to eret", "err", err)
 	}
+
+	f2, err := os.Create("/home/elwin/ftp/result2.txt")
+	if err != nil {
+		log.Error("Creating file", "err", err)
+	}
+
+	_, err = io.Copy(f2, response)
+
+	if err != nil {
+		log.Error("Copy data", "err", err)
+	}
+
+	response.Close()
 
 	conn.Quit()
 }

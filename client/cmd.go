@@ -141,68 +141,83 @@ func (server *ServerConn) epsv() (port int, err error) {
 }
 
 // pasv issues a "PASV" command to get a port number for a data connection.
-func (server *ServerConn) pasv() (host string, port int, err error) {
-	_, line, err := server.cmd(StatusPassiveMode, "PASV")
-	if err != nil {
-		return
-	}
+func (server *ServerConn) pasv() (port int, err error) {
 
-	// PASV response format : 227 Entering Passive Mode (h1,h2,h3,h4,p1,p2).
-	start := strings.Index(line, "(")
-	end := strings.LastIndex(line, ")")
-	if start == -1 || end == -1 {
-		err = errors.New("invalid PASV response format")
-		return
-	}
+	return server.epsv()
 
-	// We have to split the response string
-	pasvData := strings.Split(line[start+1:end], ",")
+	/*
+		_, line, err := server.cmd(StatusPassiveMode, "PASV")
+		if err != nil {
+			return
+		}
 
-	if len(pasvData) < 6 {
-		err = errors.New("invalid PASV response format")
-		return
-	}
+		// PASV response format : 227 Entering Passive Mode (h1,h2,h3,h4,p1,p2).
+		start := strings.Index(line, "(")
+		end := strings.LastIndex(line, ")")
+		if start == -1 || end == -1 {
+			err = errors.New("invalid PASV response format")
+			return
+		}
 
-	// Let's compute the port number
-	portPart1, err1 := strconv.Atoi(pasvData[4])
-	if err1 != nil {
-		err = err1
-		return
-	}
+		// We have to split the response string
+		pasvData := strings.Split(line[start+1:end], ",")
 
-	portPart2, err2 := strconv.Atoi(pasvData[5])
-	if err2 != nil {
-		err = err2
-		return
-	}
+		if len(pasvData) < 6 {
+			err = errors.New("invalid PASV response format")
+			return
+		}
 
-	// Recompose port
-	port = portPart1*256 + portPart2
+		// Let's compute the port number
+		portPart1, err1 := strconv.Atoi(pasvData[4])
+		if err1 != nil {
+			err = err1
+			return
+		}
 
-	// Make the IP address to connect to
-	host = strings.Join(pasvData[0:4], ".")
+		portPart2, err2 := strconv.Atoi(pasvData[5])
+		if err2 != nil {
+			err = err2
+			return
+		}
+
+		// Recompose port
+		port = portPart1*256 + portPart2
+
+		// Make the IP address to connect to
+		host = strings.Join(pasvData[0:4], ".")
+	*/
 	return
 }
 
 // getDataConn returns a host, port for a new data connection
 // it uses the best available method to do so
-func (server *ServerConn) getDataConn() (snet.Addr, error) {
+func (server *ServerConn) getDataConn() (*snet.Addr, error) {
 
-	if !server.options.disableEPSV && !server.skipEPSV {
-		if port, err := server.epsv(); err == nil {
+	/*
+		if !server.options.disableEPSV && !server.skipEPSV {
+			if port, err := server.epsv(); err == nil {
 
-			host := scion.AddrToString(server.remote)
-			addr, err := snet.AddrFromString(host + ":" + strconv.Itoa(port))
-			return *addr, err
+				host := scion.AddrToString(server.remote)
+				addr, err := snet.AddrFromString(host + ":" + strconv.Itoa(port))
+				return *addr, err
+			}
+
+			// if there is an error, skip EPSV for the next attempts
+			server.skipEPSV = true
 		}
 
-		// if there is an error, skip EPSV for the next attempts
-		server.skipEPSV = true
+	*/
+	// return server.pasv()
+
+	port, err := server.pasv()
+	if err != nil {
+		return nil, err
 	}
 
-	return snet.Addr{}, nil
+	host := scion.AddrToString(server.remote)
+	addr, err := snet.AddrFromString(host + ":" + strconv.Itoa(port))
+	return addr, err
 
-	// return server.pasv()
 }
 
 func (server *ServerConn) getDataConns() ([]snet.Addr, error) {
@@ -224,7 +239,7 @@ func (server *ServerConn) openDataConn() (scion.Conn, error) {
 		return nil, err
 	}
 
-	conn, err := scion.Dial(*laddr, addr)
+	conn, err := scion.Dial(*laddr, *addr)
 
 	return conn, err
 }
@@ -585,7 +600,7 @@ func (server *ServerConn) spas() ([]snet.Addr, error) {
 	return addrs, nil
 }
 
-func (server *ServerConn) Eret(path string, offset, length int) error {
+func (server *ServerConn) Eret(path string, offset, length int) (*Response, error) {
 
 	conns, err := server.openDataConns()
 
@@ -594,24 +609,25 @@ func (server *ServerConn) Eret(path string, offset, length int) error {
 			conn.Close()
 		}
 
-		return nil
+		return nil, err
 	}
 
 	_, line, err := server.cmd(
-		StatusExtendedPassiveMode,
+		StatusAboutToSend,
 		"ERET PFT=\"%d,%d\" %s",
 		offset, length, path)
+
+	fmt.Println(line)
 
 	if err != nil {
 		for _, conn := range conns {
 			conn.Close()
 		}
 
-		return nil
+		return nil, err
 	}
-	fmt.Println(line)
 
-	return nil
+	return &Response{conn: conns[0], c: server}, nil
 }
 
 func (server *ServerConn) Mode(mode byte) error {

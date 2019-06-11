@@ -6,17 +6,14 @@ package server
 
 import (
 	"crypto/tls"
-	"fmt"
 	"github.com/elwin/transmit/scion"
 	"io"
 	"net"
 	"os"
 	"runtime"
 	"strconv"
-	"strings"
 	"sync"
 	"syscall"
-	"time"
 )
 
 // DataSocket describes a data socket is used to send non-control data between the client and
@@ -136,6 +133,7 @@ func isErrorAddressAlreadyInUse(err error) bool {
 	return false
 }
 
+/*
 func newPassiveSocket(host string, port func() int, logger Logger, sessionID string, tlsConfig *tls.Config) (DataSocket, error) {
 	/*
 		socket := new(ftpPassiveSocket)
@@ -156,7 +154,8 @@ func newPassiveSocket(host string, port func() int, logger Logger, sessionID str
 			break
 		}
 		return socket, err
-	*/
+*/
+/*
 
 	fmt.Println("Trying to create a socket")
 
@@ -204,6 +203,8 @@ func (socket *ftpPassiveSocket) ReadFrom(r io.Reader) (int64, error) {
 	return io.Copy(socket.conn, r)
 }
 
+*/
+
 type ScionSocket struct {
 	conn scion.Conn
 	port int
@@ -233,6 +234,8 @@ func (socket ScionSocket) Port() int {
 
 	return socket.port
 }
+
+/*
 
 func (socket *ftpPassiveSocket) Write(p []byte) (n int, err error) {
 	socket.lock.Lock()
@@ -304,3 +307,5 @@ func (socket *ftpPassiveSocket) GoListenAndServe(sessionID string) (err error) {
 	}()
 	return nil
 }
+
+*/

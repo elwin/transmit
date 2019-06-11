@@ -306,16 +306,7 @@ func (cmd commandEpsv) RequireAuth() bool {
 }
 
 func (cmd commandEpsv) Execute(conn *Conn, param string) {
-	addr := conn.passiveListenIP()
-	lastIdx := strings.LastIndex(addr, ":")
-	if lastIdx <= 0 {
-		conn.writeMessage(425, "Data connection failed")
-		return
-	}
-
-	// socket, err := newPassiveSocket(addr[:lastIdx], conn.PassivePort, conn.logger, conn.sessionID, conn.tlsConfig)
-
-	port := rand.Intn(1000) + 40000
+	port := conn.PassivePort()
 
 	address := conn.server.Hostname + ":" + strconv.Itoa(port)
 
@@ -604,27 +595,8 @@ func (cmd commandPasv) RequireAuth() bool {
 }
 
 func (cmd commandPasv) Execute(conn *Conn, param string) {
-	listenIP := conn.passiveListenIP()
-	lastIdx := strings.LastIndex(listenIP, ":")
-	if lastIdx <= 0 {
-		conn.writeMessage(425, "Data connection failed")
-		return
-	}
-	socket, err := newPassiveSocket(listenIP[:lastIdx], conn.PassivePort, conn.logger, conn.sessionID, conn.tlsConfig)
 
-	fmt.Println("Created Socket")
-
-	if err != nil {
-		conn.writeMessage(425, "Data connection failed")
-		return
-	}
-	conn.dataConn = socket
-	p1 := socket.Port() / 256
-	p2 := socket.Port() - (p1 * 256)
-	quads := strings.Split(listenIP[:lastIdx], ".")
-	target := fmt.Sprintf("(%s,%s,%s,%s,%d,%d)", quads[0], quads[1], quads[2], quads[3], p1, p2)
-	msg := "Entering Passive Mode " + target
-	conn.writeMessage(227, msg)
+	commandEpsv{}.Execute(conn, param)
 }
 
 // commandPort responds to the PORT FTP command.
@@ -1191,12 +1163,12 @@ func (cmd commandSpas) RequireAuth() bool {
 func (cmd commandSpas) Execute(conn *Conn, param string) {
 
 	port1 := rand.Intn(1000) + 40000
-	port2 := rand.Intn(1000) + 40000
+	// port2 := rand.Intn(1000) + 40000
 	address1 := conn.server.Hostname + ":" + strconv.Itoa(port1)
-	address2 := conn.server.Hostname + ":" + strconv.Itoa(port2)
+	// address2 := conn.server.Hostname + ":" + strconv.Itoa(port2)
 
 	listener1, err := scion.Listen(address1)
-	listener2, err := scion.Listen(address2)
+	// listener2, err := scion.Listen(address2)
 
 	// Somehow connection doesnt get accepted (stream or something
 	if err != nil {
@@ -1207,17 +1179,17 @@ func (cmd commandSpas) Execute(conn *Conn, param string) {
 
 	line := "Entering Striped Passive Mode\n"
 	line += " " + address1 + "\r\n"
-	line += " " + address2 + "\r\n"
+	// line += " " + address2 + "\r\n"
 
 	conn.writeMessageMultiline(229, line)
 
 	stream1, _ := listener1.Accept()
-	stream2, _ := listener2.Accept()
+	// stream2, _ := listener2.Accept()
 
 	socket1 := ScionSocket{stream1, port1}
-	socket2 := ScionSocket{stream2, port2}
+	// socket2 := ScionSocket{stream2, port2}
 
-	conn.dataConns = append(conn.dataConns, socket1, socket2)
+	conn.dataConns = append(conn.dataConns, socket1 /*socket2*/)
 }
 
 type commandEret struct{}
@@ -1236,28 +1208,38 @@ func (commandEret) RequireAuth() bool {
 
 func (commandEret) Execute(conn *Conn, param string) {
 
-	// param = PFT="0,100" test.txt
-
 	params := strings.Split(param, " ")
 	module := strings.Split(params[0], "=")
 	moduleName := module[0]
 	moduleParams := strings.Split(strings.Trim(module[1], "\""), ",")
 	offset := moduleParams[0]
 	length := moduleParams[1]
-	resource := conn.buildPath(params[1])
+	path := conn.buildPath(params[1])
 
-	fmt.Println(offset, length, resource)
+	fmt.Println(offset, length, path)
 
 	if moduleName == ftp.PartialFileTransport {
+
+		bytes, data, err := conn.driver.GetFile(path, 0)
+		if err != nil {
+			conn.writeMessage(551, "File not available")
+			return
+		}
+		defer data.Close()
+
+		conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes", bytes))
+		err = conn.sendDataOverSocket(data, conn.dataConns[0])
+
+		conn.dataConns[0].Close()
+		conn.dataConns = conn.dataConns[1:]
+
+		if err != nil {
+			conn.writeMessage(551, "Error reading file")
+		}
 
 	} else {
 		conn.writeMessage(ftp.StatusNotImplemented, "Only PFT supported")
 	}
-
-	conn.writeMessage(ftp.StatusNotImplemented, "Hey there, sexy")
-}
-
-func (conn *Conn) parseEret(param string) {
 
 }
 

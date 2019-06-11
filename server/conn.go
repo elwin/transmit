@@ -13,8 +13,7 @@ import (
 	"fmt"
 	"github.com/elwin/transmit/scion"
 	"io"
-	"log"
-	mrand "math/rand"
+	random "math/rand"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -67,21 +66,27 @@ func (conn *Conn) passiveListenIP() string {
 }
 
 func (conn *Conn) PassivePort() int {
-	if len(conn.server.PassivePorts) > 0 {
-		portRange := strings.Split(conn.server.PassivePorts, "-")
 
-		if len(portRange) != 2 {
-			log.Println("empty port")
-			return 0
+	return random.Intn(10000) + 40000
+
+	/*
+		if len(conn.server.PassivePorts) > 0 {
+			portRange := strings.Split(conn.server.PassivePorts, "-")
+
+			if len(portRange) != 2 {
+				log.Println("empty port")
+				return 0
+			}
+
+			minPort, _ := strconv.Atoi(strings.TrimSpace(portRange[0]))
+			maxPort, _ := strconv.Atoi(strings.TrimSpace(portRange[1]))
+
+			return minPort + mrand.Intn(maxPort-minPort)
 		}
+		// let system automatically chose one port
+		return 0
 
-		minPort, _ := strconv.Atoi(strings.TrimSpace(portRange[0]))
-		maxPort, _ := strconv.Atoi(strings.TrimSpace(portRange[1]))
-
-		return minPort + mrand.Intn(maxPort-minPort)
-	}
-	// let system automatically chose one port
-	return 0
+	*/
 }
 
 // returns a random 20 char string that can be used as a unique session ID
@@ -249,16 +254,30 @@ func (conn *Conn) sendOutofbandData(data []byte) {
 
 func (conn *Conn) sendOutofBandDataWriter(data io.ReadCloser) error {
 	conn.lastFilePos = 0
-	bytes, err := io.Copy(conn.dataConn, data)
+
+	err := conn.sendDataOverSocket(data, conn.dataConn)
 	if err != nil {
-		conn.dataConn.Close()
-		conn.dataConn = nil
 		return err
 	}
-	message := "Closing data connection, sent " + strconv.Itoa(int(bytes)) + " bytes"
+
+	message := "Closing data connection"
 	conn.writeMessage(226, message)
 	conn.dataConn.Close()
 	conn.dataConn = nil
+
+	return nil
+}
+
+func (conn *Conn) sendDataOverSocket(data io.ReadCloser, socket DataSocket) error {
+
+	bytes, err := io.Copy(socket, data)
+
+	if err != nil {
+		return err
+	}
+
+	message := "Successfully sent " + strconv.Itoa(int(bytes)) + " bytes"
+	conn.writeMessage(200, message)
 
 	return nil
 }
