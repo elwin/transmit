@@ -15,12 +15,17 @@ func main() {
 	)
 
 	if err != nil {
-		log.Error("Failed to dial", "msg", err)
+		log.Error("Failed to dial", "err", err)
 	}
 
 	err = conn.Login("admin", "123456")
 	if err != nil {
-		log.Error("Failed to authenticate", "msg", err)
+		log.Error("Failed to authenticate", "err", err)
+	}
+
+	err = conn.Mode(ftp.ModeExtendedBlockMode)
+	if err != nil {
+		log.Error("Could not switch mode", "err", err)
 	}
 	/*
 

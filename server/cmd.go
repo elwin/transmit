@@ -1234,10 +1234,51 @@ func (commandEret) RequireAuth() bool {
 	return true
 }
 
-func (commandEret) Execute(conn *Conn, param string) error {
-	fmt.Println(param)
+func (commandEret) Execute(conn *Conn, param string) {
+
+	// param = PFT="0,100" test.txt
+
+	params := strings.Split(param, " ")
+	module := strings.Split(params[0], "=")
+	moduleName := module[0]
+	moduleParams := strings.Split(strings.Trim(module[1], "\""), ",")
+	offset := moduleParams[0]
+	length := moduleParams[1]
+	resource := conn.buildPath(params[1])
+
+	fmt.Println(offset, length, resource)
+
+	if moduleName == ftp.PartialFileTransport {
+
+	} else {
+		conn.writeMessage(ftp.StatusNotImplemented, "Only PFT supported")
+	}
 
 	conn.writeMessage(ftp.StatusNotImplemented, "Hey there, sexy")
-
-	return nil
 }
+
+func (conn *Conn) parseEret(param string) {
+
+}
+
+/*
+func (cmd commandRetr) Execute(conn *Conn, param string) {
+	path := conn.buildPath(param)
+	defer func() {
+		conn.lastFilePos = 0
+		conn.appendData = false
+	}()
+	bytes, data, err := conn.driver.GetFile(path, conn.lastFilePos)
+	if err == nil {
+		defer data.Close()
+		conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes", bytes))
+		err = conn.sendOutofBandDataWriter(data)
+
+		if err != nil {
+			conn.writeMessage(551, "Error reading file")
+		}
+	} else {
+		conn.writeMessage(551, "File not available")
+	}
+}
+*/

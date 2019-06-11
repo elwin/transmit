@@ -257,18 +257,18 @@ func (server *ServerConn) openDataConns() ([]scion.Conn, error) {
 
 // cmd is a helper function to execute a command and check for the expected FTP
 // return code
-func (server *ServerConn) cmd(expected int, format string, args ...interface{}) (int, string, error) {
-	err := server.dispatchCmd(format, args...)
+func (server *ServerConn) cmd(expected int, format string, args ...interface{}) (code int, message string, err error) {
+	err = server.dispatchCmd(format, args...)
 	if err != nil {
 		return 0, "", err
 	}
 
-	code, message, err := server.conn.ReadResponse(expected)
+	code, message, err = server.conn.ReadResponse(expected)
 	if err == nil {
 		server.logger.PrintResponse(code, message)
 	}
 
-	return code, message, err
+	return
 }
 
 func (server *ServerConn) dispatchCmd(format string, args ...interface{}) error {
@@ -597,7 +597,11 @@ func (server *ServerConn) Eret(path string, offset, length int) error {
 		return nil
 	}
 
-	_, line, err := server.cmd(StatusExtendedPassiveMode, "ERET %s=\"%d,%d\" %s")
+	_, line, err := server.cmd(
+		StatusExtendedPassiveMode,
+		"ERET PFT=\"%d,%d\" %s",
+		offset, length, path)
+
 	if err != nil {
 		for _, conn := range conns {
 			conn.Close()
@@ -608,6 +612,13 @@ func (server *ServerConn) Eret(path string, offset, length int) error {
 	fmt.Println(line)
 
 	return nil
+}
+
+func (server *ServerConn) Mode(mode byte) error {
+	code, line, err := server.cmd(StatusCommandOK, "MODE %s", string(mode))
+
+	fmt.Println(code, line, err)
+	return err
 }
 
 // Read implements the io.Reader interface on a FTP data connection.
