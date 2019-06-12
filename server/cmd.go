@@ -1208,6 +1208,7 @@ func (commandEret) RequireAuth() bool {
 	return true
 }
 
+// Did not handle conn.lastFilePos yet
 func (commandEret) Execute(conn *Conn, param string) {
 
 	params := strings.Split(param, " ")
@@ -1251,25 +1252,3 @@ func (commandEret) Execute(conn *Conn, param string) {
 	}
 
 }
-
-/*
-func (cmd commandRetr) Execute(conn *Conn, param string) {
-	path := conn.buildPath(param)
-	defer func() {
-		conn.lastFilePos = 0
-		conn.appendData = false
-	}()
-	bytes, data, err := conn.driver.GetFile(path, conn.lastFilePos)
-	if err == nil {
-		defer data.Close()
-		conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes", bytes))
-		err = conn.sendOutofBandDataWriter(data)
-
-		if err != nil {
-			conn.writeMessage(551, "Error reading file")
-		}
-	} else {
-		conn.writeMessage(551, "File not available")
-	}
-}
-*/

@@ -5,7 +5,7 @@ import (
 	"github.com/scionproto/scion/go/lib/log"
 	"io"
 	"os"
-	"strings"
+	"sync"
 	"time"
 )
 
@@ -31,8 +31,6 @@ func main() {
 		log.Error("Could not switch mode", "err", err)
 	}
 
-	conn.Stor("yolo.txt", strings.NewReader("This data is supposed to be sent and retrieved subsequently"))
-
 	/*
 			response, err := conn.Retr("yolo.txt")
 			if err != nil {
@@ -52,23 +50,50 @@ func main() {
 		}
 	*/
 
-	response, err := conn.Eret("yolo.txt", 5, 10)
-	if err != nil {
-		log.Error("failed to eret", "err", err)
-	}
-
 	f2, err := os.Create("/home/elwin/ftp/result2.txt")
 	if err != nil {
 		log.Error("Creating file", "err", err)
 	}
 
-	_, err = io.Copy(f2, response)
+	reader := make([]*ftp.Response, 5)
+	var wg sync.WaitGroup
+	wg.Add(5)
+	for i := 0; i < 5; i++ {
 
-	if err != nil {
-		log.Error("Copy data", "err", err)
+		offset := i * 30
+
+		response, err := conn.Eret("yolo.txt", offset, 20)
+
+		if err != nil {
+			log.Error("Something went wrong!", "err", err)
+		}
+
+		reader[i] = response
+		io.Copy(f2, response)
+		response.Close()
+
+		wg.Done()
 	}
 
-	response.Close()
+	wg.Wait()
+
+	/*
+		response, err := conn.Eret("yolo.txt", 5, 10)
+		if err != nil {
+			log.Error("failed to eret", "err", err)
+		}
+	*/
+
+	/*
+		for i := 0; i < 5; i++ {
+			_, err = io.Copy(f2, reader[i])
+			reader[i].Close()
+			if err != nil {
+				log.Error("Copy data", "err", err)
+			}
+
+		}
+	*/
 
 	conn.Quit()
 }

@@ -601,10 +601,10 @@ func (server *ServerConn) spas() ([]snet.Addr, error) {
 
 func (server *ServerConn) Eret(path string, offset, length int) (*Response, error) {
 
-	conn, err := server.openDataConns()
+	socket, err := server.openDataConns()
 
 	if err != nil {
-		conn.Close()
+		socket.Close()
 
 		return nil, err
 	}
@@ -617,12 +617,12 @@ func (server *ServerConn) Eret(path string, offset, length int) (*Response, erro
 	fmt.Println(line)
 
 	if err != nil {
-		conn.Close()
+		socket.Close()
 
 		return nil, err
 	}
 
-	return &Response{conn: conn, c: server}, nil
+	return &Response{conn: socket, c: server}, nil
 }
 
 func (server *ServerConn) Mode(mode byte) error {
