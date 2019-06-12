@@ -9,9 +9,11 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"github.com/elwin/transmit/scion"
+	"github.com/elwin/transmit/striping"
 	"io"
 	random "math/rand"
 	"path/filepath"
@@ -28,7 +30,7 @@ type Conn struct {
 	controlReader *bufio.Reader
 	controlWriter *bufio.Writer
 	dataConn      DataSocket
-	dataConns     []DataSocket
+	socket        DataSocket
 	driver        Driver
 	auth          Auth
 	logger        Logger
@@ -139,11 +141,10 @@ func (conn *Conn) Close() {
 		conn.dataConn.Close()
 		conn.dataConn = nil
 	}
-	for _, socket := range conn.dataConns {
-		socket.Close()
+	if conn.socket != nil {
+		conn.socket.Close()
+		conn.socket = nil
 	}
-
-	conn.dataConns = nil
 }
 
 func (conn *Conn) upgradeToTLS() error {
@@ -280,4 +281,13 @@ func (conn *Conn) sendDataOverSocket(data io.ReadCloser, socket DataSocket) erro
 	conn.writeMessage(200, message)
 
 	return nil
+}
+
+func (conn *Conn) transmitData(header striping.Header, socket DataSocket) {
+
+	binary.Write(socket, binary.BigEndian, header)
+
+	data := []byte{1, 2, 3, 4, 5, 6, 7, 8}
+	socket.Write(data)
+
 }

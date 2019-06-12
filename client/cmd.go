@@ -2,11 +2,12 @@ package ftp
 
 import (
 	"bufio"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/elwin/transmit/scion"
+	"github.com/elwin/transmit/striping"
 	"github.com/scionproto/scion/go/lib/snet"
-
 	"io"
 	"net/textproto"
 	"strconv"
@@ -244,7 +245,7 @@ func (server *ServerConn) openDataConn() (scion.Conn, error) {
 	return conn, err
 }
 
-func (server *ServerConn) openDataConns() ([]scion.Conn, error) {
+func (server *ServerConn) openDataConns() (scion.Conn, error) {
 
 	addrs, err := server.getDataConns()
 	if err != nil {
@@ -256,7 +257,7 @@ func (server *ServerConn) openDataConns() ([]scion.Conn, error) {
 		return nil, err
 	}
 
-	var conns []scion.Conn
+	var conns scion.Conn
 
 	for _, addr := range addrs {
 		conn, err := scion.Dial(*laddr, addr)
@@ -264,7 +265,7 @@ func (server *ServerConn) openDataConns() ([]scion.Conn, error) {
 			return nil, err
 		}
 
-		conns = append(conns, conn)
+		return conn, nil
 	}
 
 	return conns, nil
@@ -602,12 +603,10 @@ func (server *ServerConn) spas() ([]snet.Addr, error) {
 
 func (server *ServerConn) Eret(path string, offset, length int) (*Response, error) {
 
-	conns, err := server.openDataConns()
+	conn, err := server.openDataConns()
 
 	if err != nil {
-		for _, conn := range conns {
-			conn.Close()
-		}
+		conn.Close()
 
 		return nil, err
 	}
@@ -620,14 +619,24 @@ func (server *ServerConn) Eret(path string, offset, length int) (*Response, erro
 	fmt.Println(line)
 
 	if err != nil {
-		for _, conn := range conns {
-			conn.Close()
-		}
+		conn.Close()
 
 		return nil, err
 	}
 
-	return &Response{conn: conns[0], c: server}, nil
+	header := striping.Header{}
+
+	err = binary.Read(conn, binary.BigEndian, &header)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse header: %s", err)
+	}
+
+	buf := make([]byte, header.ByteCount)
+	io.ReadFull(conn, buf)
+
+	fmt.Println(buf)
+
+	return &Response{conn: conn, c: server}, nil
 }
 
 func (server *ServerConn) Mode(mode byte) error {

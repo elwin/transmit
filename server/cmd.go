@@ -8,6 +8,7 @@ import (
 	"fmt"
 	ftp "github.com/elwin/transmit/client"
 	"github.com/elwin/transmit/scion"
+	"github.com/elwin/transmit/striping"
 	"log"
 	"math/rand"
 	"strconv"
@@ -1189,7 +1190,9 @@ func (cmd commandSpas) Execute(conn *Conn, param string) {
 	socket1 := ScionSocket{stream1, port1}
 	// socket2 := ScionSocket{stream2, port2}
 
-	conn.dataConns = append(conn.dataConns, socket1 /*socket2*/)
+	conn.socket = socket1
+
+	// conn.socket = append(conn.socket, socket1 /*socket2*/)
 }
 
 type commandEret struct{}
@@ -1228,10 +1231,14 @@ func (commandEret) Execute(conn *Conn, param string) {
 		defer data.Close()
 
 		conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes", bytes))
-		err = conn.sendDataOverSocket(data, conn.dataConns[0])
 
-		conn.dataConns[0].Close()
-		conn.dataConns = conn.dataConns[1:]
+		header := striping.NewHeader(2, 420)
+		conn.transmitData(header, conn.socket)
+
+		// err = conn.sendDataOverSocket(data, conn.socket)
+
+		conn.socket.Close()
+		conn.socket = nil
 
 		if err != nil {
 			conn.writeMessage(551, "Error reading file")

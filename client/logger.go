@@ -33,8 +33,9 @@ func (logger *StdLogger) PrintCommand(command string, params ...interface{}) {
 	if command == "PASS" {
 		log.Printf("> PASS ****")
 	} else {
-		log.Printf("> %s %s", command, params)
+		log.Printf("> %s %v", command, params)
 	}
+
 }
 
 func (logger *StdLogger) PrintResponse(code int, message interface{}) {
