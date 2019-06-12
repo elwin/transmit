@@ -9,11 +9,9 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"github.com/elwin/transmit/scion"
-	"github.com/elwin/transmit/striping"
 	"io"
 	random "math/rand"
 	"path/filepath"
@@ -283,6 +281,20 @@ func (conn *Conn) sendDataOverSocket(data io.ReadCloser, socket DataSocket) erro
 	return nil
 }
 
+func (conn *Conn) sendDataOverSocketN(data io.ReadCloser, socket DataSocket, length int) error {
+
+	bytes, err := io.CopyN(socket, data, int64(length))
+	if err != nil {
+		return err
+	}
+
+	message := "Successfully sent " + strconv.Itoa(int(bytes)) + " bytes"
+	conn.writeMessage(200, message)
+
+	return nil
+}
+
+/*
 func (conn *Conn) transmitData(header striping.Header, socket DataSocket) {
 
 	binary.Write(socket, binary.BigEndian, header)
@@ -290,4 +302,4 @@ func (conn *Conn) transmitData(header striping.Header, socket DataSocket) {
 	data := []byte{1, 2, 3, 4, 5, 6, 7, 8}
 	socket.Write(data)
 
-}
+}*/

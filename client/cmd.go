@@ -2,11 +2,9 @@ package ftp
 
 import (
 	"bufio"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/elwin/transmit/scion"
-	"github.com/elwin/transmit/striping"
 	"github.com/scionproto/scion/go/lib/snet"
 	"io"
 	"net/textproto"
@@ -623,18 +621,6 @@ func (server *ServerConn) Eret(path string, offset, length int) (*Response, erro
 
 		return nil, err
 	}
-
-	header := striping.Header{}
-
-	err = binary.Read(conn, binary.BigEndian, &header)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse header: %s", err)
-	}
-
-	buf := make([]byte, header.ByteCount)
-	io.ReadFull(conn, buf)
-
-	fmt.Println(buf)
 
 	return &Response{conn: conn, c: server}, nil
 }

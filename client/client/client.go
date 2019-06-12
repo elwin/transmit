@@ -52,7 +52,7 @@ func main() {
 		}
 	*/
 
-	response, err := conn.Eret("yolo.txt", 0, 100)
+	response, err := conn.Eret("yolo.txt", 5, 10)
 	if err != nil {
 		log.Error("failed to eret", "err", err)
 	}

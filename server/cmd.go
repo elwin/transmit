@@ -8,7 +8,6 @@ import (
 	"fmt"
 	ftp "github.com/elwin/transmit/client"
 	"github.com/elwin/transmit/scion"
-	"github.com/elwin/transmit/striping"
 	"log"
 	"math/rand"
 	"strconv"
@@ -1215,15 +1214,21 @@ func (commandEret) Execute(conn *Conn, param string) {
 	module := strings.Split(params[0], "=")
 	moduleName := module[0]
 	moduleParams := strings.Split(strings.Trim(module[1], "\""), ",")
-	offset := moduleParams[0]
-	length := moduleParams[1]
+	offset, err := strconv.Atoi(moduleParams[0])
+	if err != nil {
+		conn.writeMessage(501, "Failed to parse parameters")
+		return
+	}
+	length, err := strconv.Atoi(moduleParams[1])
+	if err != nil {
+		conn.writeMessage(501, "Failed to parse parameters")
+		return
+	}
 	path := conn.buildPath(params[1])
-
-	fmt.Println(offset, length, path)
 
 	if moduleName == ftp.PartialFileTransport {
 
-		bytes, data, err := conn.driver.GetFile(path, 0)
+		bytes, data, err := conn.driver.GetFile(path, int64(offset))
 		if err != nil {
 			conn.writeMessage(551, "File not available")
 			return
@@ -1232,10 +1237,7 @@ func (commandEret) Execute(conn *Conn, param string) {
 
 		conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes", bytes))
 
-		header := striping.NewHeader(2, 420)
-		conn.transmitData(header, conn.socket)
-
-		// err = conn.sendDataOverSocket(data, conn.socket)
+		err = conn.sendDataOverSocketN(data, conn.socket, length)
 
 		conn.socket.Close()
 		conn.socket = nil
