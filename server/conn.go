@@ -6,12 +6,15 @@ package server
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
 	"github.com/elwin/transmit/scion"
+	"github.com/elwin/transmit/striping"
+	"github.com/scionproto/scion/go/lib/log"
 	"io"
 	random "math/rand"
 	"path/filepath"
@@ -24,26 +27,26 @@ const (
 )
 
 type Conn struct {
-	conn          scion.Conn
-	controlReader *bufio.Reader
-	controlWriter *bufio.Writer
-	dataConn      DataSocket
-	socket        DataSocket
-	driver        Driver
-	auth          Auth
-	logger        Logger
-	server        *Server
-	tlsConfig     *tls.Config
-	sessionID     string
-	namePrefix    string
-	reqUser       string
-	user          string
-	renameFrom    string
-	lastFilePos   int64
-	appendData    bool
-	closed        bool
-	tls           bool
-	extendedMode  bool
+	conn            scion.Conn
+	controlReader   *bufio.Reader
+	controlWriter   *bufio.Writer
+	socket          DataSocket
+	parallelSockets []DataSocket
+	driver          Driver
+	auth            Auth
+	logger          Logger
+	server          *Server
+	tlsConfig       *tls.Config
+	sessionID       string
+	namePrefix      string
+	reqUser         string
+	user            string
+	renameFrom      string
+	lastFilePos     int64
+	appendData      bool
+	closed          bool
+	tls             bool
+	extendedMode    bool
 }
 
 func (conn *Conn) LoginUser() string {
@@ -122,7 +125,7 @@ func (conn *Conn) Serve() {
 		}
 		conn.receiveLine(line)
 		// QUIT command closes connection, break to avoid error on reading from
-		// closed socket
+		// closed parallelSockets
 		if conn.closed == true {
 			break
 		}
@@ -135,14 +138,15 @@ func (conn *Conn) Serve() {
 func (conn *Conn) Close() {
 	conn.conn.Close()
 	conn.closed = true
-	if conn.dataConn != nil {
-		conn.dataConn.Close()
-		conn.dataConn = nil
-	}
 	if conn.socket != nil {
 		conn.socket.Close()
 		conn.socket = nil
 	}
+
+	for _, socket := range conn.parallelSockets {
+		socket.Close()
+	}
+	conn.parallelSockets = nil
 }
 
 func (conn *Conn) upgradeToTLS() error {
@@ -239,13 +243,13 @@ func (conn *Conn) buildPath(filename string) (fullPath string) {
 }
 
 // sendOutofbandData will send a string to the client via the currently open
-// data socket. Assumes the socket is open and ready to be used.
+// data parallelSockets. Assumes the parallelSockets is open and ready to be used.
 func (conn *Conn) sendOutofbandData(data []byte) {
 	bytes := len(data)
-	if conn.dataConn != nil {
-		conn.dataConn.Write(data)
-		conn.dataConn.Close()
-		conn.dataConn = nil
+	if conn.socket != nil {
+		conn.socket.Write(data)
+		conn.socket.Close()
+		conn.socket = nil
 	}
 	message := "Closing data connection, sent " + strconv.Itoa(bytes) + " bytes"
 	conn.writeMessage(226, message)
@@ -254,20 +258,20 @@ func (conn *Conn) sendOutofbandData(data []byte) {
 func (conn *Conn) sendOutofBandDataWriter(data io.ReadCloser) error {
 	conn.lastFilePos = 0
 
-	err := conn.sendDataOverSocket(data, conn.dataConn)
+	err := conn.sendDataOverSocket(data, conn.socket)
 	if err != nil {
 		return err
 	}
 
 	message := "Closing data connection"
 	conn.writeMessage(226, message)
-	conn.dataConn.Close()
-	conn.dataConn = nil
+	conn.socket.Close()
+	conn.socket = nil
 
 	return nil
 }
 
-func (conn *Conn) sendDataOverSocket(data io.ReadCloser, socket DataSocket) error {
+func (conn *Conn) sendDataOverSocket(data io.Reader, socket DataSocket) error {
 
 	bytes, err := io.Copy(socket, data)
 
@@ -281,7 +285,7 @@ func (conn *Conn) sendDataOverSocket(data io.ReadCloser, socket DataSocket) erro
 	return nil
 }
 
-func (conn *Conn) sendDataOverSocketN(data io.ReadCloser, socket DataSocket, length int) error {
+func (conn *Conn) sendDataOverSocketN(data io.Reader, socket DataSocket, length int) error {
 
 	bytes, err := io.CopyN(socket, data, int64(length))
 	if err != nil {
@@ -294,12 +298,59 @@ func (conn *Conn) sendDataOverSocketN(data io.ReadCloser, socket DataSocket, len
 	return nil
 }
 
-/*
-func (conn *Conn) transmitData(header striping.Header, socket DataSocket) {
+func (conn *Conn) partitionData() []striping.Segment {
 
-	binary.Write(socket, binary.BigEndian, header)
+	data := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	segments := []striping.Segment{
+		striping.NewSegment(data[:5], 0),
+		striping.NewSegment(data[5:], 5),
+	}
+
+	return segments
+}
+
+func (conn *Conn) sendData() {
+
+	segments := conn.partitionData()
+
+	socket := conn.parallelSockets[0]
+	header := striping.NewEODCHeader(2)
+	err := SendOverSocket(socket, header)
+	if err != nil {
+		log.Error("Failed to send EODC Header", "err", err)
+	}
+
+	for i, segment := range segments {
+
+		header = segment.Header
+		header = header.AddFlag(striping.BlockFlagEndOfData)
+
+		socket = conn.parallelSockets[i]
+
+		err := SendOverSocket(socket, header)
+		if err != nil {
+			log.Error("Failed to write header", "err", err)
+		}
+
+		reader := bytes.NewReader(segment.Data)
+		bytes, err := io.Copy(socket, reader)
+
+		if err != nil {
+			log.Error("Failed to copy data", "err", err)
+		}
+
+		message := "Successfully sent " + strconv.Itoa(int(bytes)) + " bytes"
+		conn.writeMessage(200, message)
+	}
+
+}
+
+/*
+func (conn *Conn) transmitData(header striping.Header, parallelSockets DataSocket) {
+
+	binary.Write(parallelSockets, binary.BigEndian, header)
 
 	data := []byte{1, 2, 3, 4, 5, 6, 7, 8}
-	socket.Write(data)
+	parallelSockets.Write(data)
 
 }*/

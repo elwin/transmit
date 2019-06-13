@@ -41,6 +41,7 @@ type ServerConn struct {
 	features      map[string]string
 	skipEPSV      bool
 	mlstSupported bool
+	extendedMode  bool
 }
 
 // DialOption represents an option to start a new connection with DialAddr

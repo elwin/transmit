@@ -253,7 +253,7 @@ func (cmd commandDele) Execute(conn *Conn, param string) {
 }
 
 // commandEprt responds to the EPRT FTP command. It allows the client to
-// request an active data socket with more options than the original PORT
+// request an active data parallelSockets with more options than the original PORT
 // command. It mainly adds ipv6 support.
 type commandEprt struct{}
 
@@ -284,12 +284,12 @@ func (cmd commandEprt) Execute(conn *Conn, param string) {
 		conn.writeMessage(425, "Data connection failed")
 		return
 	}
-	conn.dataConn = socket
+	conn.socket = socket
 	conn.writeMessage(200, "Connection established ("+strconv.Itoa(port)+")")
 }
 
 // commandEpsv responds to the EPSV FTP command. It allows the client to
-// request a passive data socket with more options than the original PASV
+// request a passive data parallelSockets with more options than the original PASV
 // command. It mainly adds ipv6 support, although we don't support that yet.
 type commandEpsv struct{}
 
@@ -326,7 +326,7 @@ func (cmd commandEpsv) Execute(conn *Conn, param string) {
 
 	socket := ScionSocket{stream, port}
 
-	conn.dataConn = socket
+	conn.socket = socket
 }
 
 // commandList responds to the LIST FTP command. It allows the client to retreive
@@ -489,9 +489,9 @@ func (cmd commandMkd) Execute(conn *Conn, param string) {
 // cmdMode responds to the MODE FTP command.
 //
 // the original FTP spec had various options for hosts to negotiate how data
-// would be sent over the data socket, In reality these days (S)tream mode
+// would be sent over the data parallelSockets, In reality these days (S)tream mode
 // is all that is used for the mode - data is just streamed down the data
-// socket unchanged.
+// parallelSockets unchanged.
 type commandMode struct{}
 
 func (cmd commandMode) IsExtend() bool {
@@ -578,7 +578,7 @@ func (cmd commandPass) Execute(conn *Conn, param string) {
 
 // commandPasv responds to the PASV FTP command.
 //
-// The client is requesting us to open a new TCP listing socket and wait for them
+// The client is requesting us to open a new TCP listing parallelSockets and wait for them
 // to connect to it.
 type commandPasv struct{}
 
@@ -601,7 +601,7 @@ func (cmd commandPasv) Execute(conn *Conn, param string) {
 
 // commandPort responds to the PORT FTP command.
 //
-// The client has opened a listening socket for sending out of band data and
+// The client has opened a listening parallelSockets for sending out of band data and
 // is requesting that we connect to it
 type commandPort struct{}
 
@@ -628,7 +628,7 @@ func (cmd commandPort) Execute(conn *Conn, param string) {
 		conn.writeMessage(425, "Data connection failed")
 		return
 	}
-	conn.dataConn = socket
+	conn.socket = socket
 	conn.writeMessage(200, "Connection established ("+strconv.Itoa(port)+")")
 }
 
@@ -691,23 +691,29 @@ func (cmd commandRetr) RequireAuth() bool {
 }
 
 func (cmd commandRetr) Execute(conn *Conn, param string) {
-	path := conn.buildPath(param)
-	defer func() {
-		conn.lastFilePos = 0
-		conn.appendData = false
-	}()
-	bytes, data, err := conn.driver.GetFile(path, conn.lastFilePos)
-	if err == nil {
-		defer data.Close()
-		conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes", bytes))
-		err = conn.sendOutofBandDataWriter(data)
 
-		if err != nil {
-			conn.writeMessage(551, "Error reading file")
+	conn.sendData()
+
+	// This is the actual program, do not delete!
+	/*
+		path := conn.buildPath(param)
+		defer func() {
+			conn.lastFilePos = 0
+			conn.appendData = false
+		}()
+		bytes, data, err := conn.driver.GetFile(path, conn.lastFilePos)
+		if err == nil {
+			defer data.Close()
+			conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes", bytes))
+			err = conn.sendOutofBandDataWriter(data)
+
+			if err != nil {
+				conn.writeMessage(551, "Error reading file")
+			}
+		} else {
+			conn.writeMessage(551, "File not available")
 		}
-	} else {
-		conn.writeMessage(551, "File not available")
-	}
+	*/
 }
 
 type commandRest struct{}
@@ -1027,7 +1033,7 @@ func (cmd commandStor) Execute(conn *Conn, param string) {
 		conn.appendData = false
 	}()
 
-	bytes, err := conn.driver.PutFile(targetPath, conn.dataConn, conn.appendData)
+	bytes, err := conn.driver.PutFile(targetPath, conn.socket, conn.appendData)
 	if err == nil {
 		msg := "OK, received " + strconv.Itoa(int(bytes)) + " bytes"
 		conn.writeMessage(226, msg)
@@ -1163,12 +1169,12 @@ func (cmd commandSpas) RequireAuth() bool {
 func (cmd commandSpas) Execute(conn *Conn, param string) {
 
 	port1 := rand.Intn(1000) + 40000
-	// port2 := rand.Intn(1000) + 40000
+	port2 := rand.Intn(1000) + 40000
 	address1 := conn.server.Hostname + ":" + strconv.Itoa(port1)
-	// address2 := conn.server.Hostname + ":" + strconv.Itoa(port2)
+	address2 := conn.server.Hostname + ":" + strconv.Itoa(port2)
 
 	listener1, err := scion.Listen(address1)
-	// listener2, err := scion.Listen(address2)
+	listener2, err := scion.Listen(address2)
 
 	// Somehow connection doesnt get accepted (stream or something
 	if err != nil {
@@ -1179,19 +1185,17 @@ func (cmd commandSpas) Execute(conn *Conn, param string) {
 
 	line := "Entering Striped Passive Mode\n"
 	line += " " + address1 + "\r\n"
-	// line += " " + address2 + "\r\n"
+	line += " " + address2 + "\r\n"
 
 	conn.writeMessageMultiline(229, line)
 
 	stream1, _ := listener1.Accept()
-	// stream2, _ := listener2.Accept()
+	stream2, _ := listener2.Accept()
 
 	socket1 := ScionSocket{stream1, port1}
-	// socket2 := ScionSocket{stream2, port2}
+	socket2 := ScionSocket{stream2, port2}
 
-	conn.socket = socket1
-
-	// conn.socket = append(conn.socket, socket1 /*socket2*/)
+	conn.parallelSockets = append(conn.parallelSockets, socket1, socket2)
 }
 
 type commandEret struct{}

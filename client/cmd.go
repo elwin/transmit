@@ -2,9 +2,11 @@ package ftp
 
 import (
 	"bufio"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/elwin/transmit/scion"
+	"github.com/elwin/transmit/striping"
 	"github.com/scionproto/scion/go/lib/snet"
 	"io"
 	"net/textproto"
@@ -243,7 +245,7 @@ func (server *ServerConn) openDataConn() (scion.Conn, error) {
 	return conn, err
 }
 
-func (server *ServerConn) openDataConns() (scion.Conn, error) {
+func (server *ServerConn) openDataConns() ([]scion.Conn, error) {
 
 	addrs, err := server.getDataConns()
 	if err != nil {
@@ -255,7 +257,7 @@ func (server *ServerConn) openDataConns() (scion.Conn, error) {
 		return nil, err
 	}
 
-	var conns scion.Conn
+	var conns []scion.Conn
 
 	for _, addr := range addrs {
 		conn, err := scion.Dial(*laddr, addr)
@@ -263,7 +265,7 @@ func (server *ServerConn) openDataConns() (scion.Conn, error) {
 			return nil, err
 		}
 
-		return conn, nil
+		conns = append(conns, conn)
 	}
 
 	return conns, nil
@@ -601,7 +603,8 @@ func (server *ServerConn) spas() ([]snet.Addr, error) {
 
 func (server *ServerConn) Eret(path string, offset, length int) (*Response, error) {
 
-	socket, err := server.openDataConns()
+	sockets, err := server.openDataConns()
+	socket := sockets[0]
 
 	if err != nil {
 		socket.Close()
@@ -628,8 +631,37 @@ func (server *ServerConn) Eret(path string, offset, length int) (*Response, erro
 func (server *ServerConn) Mode(mode byte) error {
 	code, line, err := server.cmd(StatusCommandOK, "MODE %s", string(mode))
 
-	fmt.Println(code, line, err)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to set Mode %v: %d - %s", mode, code, line)
+	}
+
+	server.extendedMode = true
+	return nil
+}
+
+func (server *ServerConn) RetrMultipleConns() error {
+
+	conns, err := server.openDataConns()
+	if err != nil {
+		return err
+	}
+
+	err = server.dispatchCmd("RETR %s", "yolo.txt")
+	if err != nil {
+		return err
+	}
+
+	var header striping.Header
+	err = binary.Read(conns[0], binary.BigEndian, &header)
+	if err != nil {
+		return nil
+	}
+
+	if header.ContainsFlag(striping.BlockFlagEndOfDataCount) {
+
+	}
+
+	return nil
 }
 
 // Read implements the io.Reader interface on a FTP data connection.

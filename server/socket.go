@@ -6,7 +6,9 @@ package server
 
 import (
 	"crypto/tls"
+	"encoding/binary"
 	"github.com/elwin/transmit/scion"
+	"github.com/elwin/transmit/striping"
 	"io"
 	"net"
 	"os"
@@ -16,7 +18,7 @@ import (
 	"syscall"
 )
 
-// DataSocket describes a data socket is used to send non-control data between the client and
+// DataSocket describes a data parallelSockets is used to send non-control data between the client and
 // server.
 type DataSocket interface {
 	Host() string
@@ -136,28 +138,28 @@ func isErrorAddressAlreadyInUse(err error) bool {
 /*
 func newPassiveSocket(host string, port func() int, logger Logger, sessionID string, tlsConfig *tls.Config) (DataSocket, error) {
 	/*
-		socket := new(ftpPassiveSocket)
-		socket.ingress = make(chan []byte)
-		socket.egress = make(chan []byte)
-		socket.logger = logger
-		socket.host = host
-		socket.tlsConfig = tlsConfig
+		parallelSockets := new(ftpPassiveSocket)
+		parallelSockets.ingress = make(chan []byte)
+		parallelSockets.egress = make(chan []byte)
+		parallelSockets.logger = logger
+		parallelSockets.host = host
+		parallelSockets.tlsConfig = tlsConfig
 		const retries = 10
 		var err error
 		for i := 1; i <= retries; i++ {
-			socket.port = port()
-			err = socket.GoListenAndServe(sessionID)
-			if err != nil && socket.port != 0 && isErrorAddressAlreadyInUse(err) {
+			parallelSockets.port = port()
+			err = parallelSockets.GoListenAndServe(sessionID)
+			if err != nil && parallelSockets.port != 0 && isErrorAddressAlreadyInUse(err) {
 				// choose a different port on error already in use
 				continue
 			}
 			break
 		}
-		return socket, err
+		return parallelSockets, err
 */
 /*
 
-	fmt.Println("Trying to create a socket")
+	fmt.Println("Trying to create a parallelSockets")
 
 	listener, err := scion.Listen("1-ff00:0:110,[127.0.0.1]:40000")
 
@@ -174,33 +176,33 @@ func newPassiveSocket(host string, port func() int, logger Logger, sessionID str
 	return ScionSocket{stream, 40002}, err
 }
 
-func (socket *ftpPassiveSocket) Host() string {
-	return socket.host
+func (parallelSockets *ftpPassiveSocket) Host() string {
+	return parallelSockets.host
 }
 
-func (socket *ftpPassiveSocket) Port() int {
-	return socket.port
+func (parallelSockets *ftpPassiveSocket) Port() int {
+	return parallelSockets.port
 }
 
-func (socket *ftpPassiveSocket) Read(p []byte) (n int, err error) {
-	socket.lock.Lock()
-	defer socket.lock.Unlock()
-	if socket.err != nil {
-		return 0, socket.err
+func (parallelSockets *ftpPassiveSocket) Read(p []byte) (n int, err error) {
+	parallelSockets.lock.Lock()
+	defer parallelSockets.lock.Unlock()
+	if parallelSockets.err != nil {
+		return 0, parallelSockets.err
 	}
-	return socket.conn.Read(p)
+	return parallelSockets.conn.Read(p)
 }
 
-func (socket *ftpPassiveSocket) ReadFrom(r io.Reader) (int64, error) {
-	socket.lock.Lock()
-	defer socket.lock.Unlock()
-	if socket.err != nil {
-		return 0, socket.err
+func (parallelSockets *ftpPassiveSocket) ReadFrom(r io.Reader) (int64, error) {
+	parallelSockets.lock.Lock()
+	defer parallelSockets.lock.Unlock()
+	if parallelSockets.err != nil {
+		return 0, parallelSockets.err
 	}
 
 	// For normal TCPConn, this will use sendfile syscall; if not,
 	// it will just downgrade to normal read/write procedure
-	return io.Copy(socket.conn, r)
+	return io.Copy(parallelSockets.conn, r)
 }
 
 */
@@ -235,37 +237,42 @@ func (socket ScionSocket) Port() int {
 	return socket.port
 }
 
-/*
+func SendOverSocket(socket DataSocket, header striping.Header) error {
+	return binary.Write(socket, binary.BigEndian, header)
 
-func (socket *ftpPassiveSocket) Write(p []byte) (n int, err error) {
-	socket.lock.Lock()
-	defer socket.lock.Unlock()
-	if socket.err != nil {
-		return 0, socket.err
-	}
-	return socket.conn.Write(p)
 }
 
-func (socket *ftpPassiveSocket) Close() error {
-	socket.lock.Lock()
-	defer socket.lock.Unlock()
-	if socket.conn != nil {
-		return socket.conn.Close()
+/*
+
+func (parallelSockets *ftpPassiveSocket) Write(p []byte) (n int, err error) {
+	parallelSockets.lock.Lock()
+	defer parallelSockets.lock.Unlock()
+	if parallelSockets.err != nil {
+		return 0, parallelSockets.err
+	}
+	return parallelSockets.conn.Write(p)
+}
+
+func (parallelSockets *ftpPassiveSocket) Close() error {
+	parallelSockets.lock.Lock()
+	defer parallelSockets.lock.Unlock()
+	if parallelSockets.conn != nil {
+		return parallelSockets.conn.Close()
 	}
 	return nil
 }
 
-func (socket *ftpPassiveSocket) GoListenAndServe(sessionID string) (err error) {
-	laddr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort("", strconv.Itoa(socket.port)))
+func (parallelSockets *ftpPassiveSocket) GoListenAndServe(sessionID string) (err error) {
+	laddr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort("", strconv.Itoa(parallelSockets.port)))
 	if err != nil {
-		socket.logger.Print(sessionID, err)
+		parallelSockets.logger.Print(sessionID, err)
 		return
 	}
 
 	var tcplistener *net.TCPListener
 	tcplistener, err = net.ListenTCP("tcp", laddr)
 	if err != nil {
-		socket.logger.Print(sessionID, err)
+		parallelSockets.logger.Print(sessionID, err)
 		return
 	}
 
@@ -274,7 +281,7 @@ func (socket *ftpPassiveSocket) GoListenAndServe(sessionID string) (err error) {
 	const acceptTimeout = 60 * time.Second
 	err = tcplistener.SetDeadline(time.Now().Add(acceptTimeout))
 	if err != nil {
-		socket.logger.Print(sessionID, err)
+		parallelSockets.logger.Print(sessionID, err)
 		return
 	}
 
@@ -283,26 +290,26 @@ func (socket *ftpPassiveSocket) GoListenAndServe(sessionID string) (err error) {
 	parts := strings.Split(add.String(), ":")
 	port, err := strconv.Atoi(parts[len(parts)-1])
 	if err != nil {
-		socket.logger.Print(sessionID, err)
+		parallelSockets.logger.Print(sessionID, err)
 		return
 	}
 
-	socket.port = port
-	if socket.tlsConfig != nil {
-		listener = tls.NewListener(listener, socket.tlsConfig)
+	parallelSockets.port = port
+	if parallelSockets.tlsConfig != nil {
+		listener = tls.NewListener(listener, parallelSockets.tlsConfig)
 	}
 
-	socket.lock.Lock()
+	parallelSockets.lock.Lock()
 	go func() {
-		defer socket.lock.Unlock()
+		defer parallelSockets.lock.Unlock()
 
 		conn, err := listener.Accept()
 		if err != nil {
-			socket.err = err
+			parallelSockets.err = err
 			return
 		}
-		socket.err = nil
-		socket.conn = conn
+		parallelSockets.err = nil
+		parallelSockets.conn = conn
 		_ = listener.Close()
 	}()
 	return nil
