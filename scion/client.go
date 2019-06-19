@@ -3,7 +3,6 @@ package scion
 import (
 	"encoding/gob"
 	"fmt"
-	"github.com/scionproto/scion/go/lib/log"
 	"github.com/scionproto/scion/go/lib/sciond"
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/snet/squic"
@@ -42,11 +41,7 @@ func Dial(local, remote snet.Addr) (Conn, error) {
 		return nil, err
 	}
 
-	return &Connection{
-		stream,
-		local,
-		remote,
-	}, nil
+	return NewConnection(stream, local, remote), nil
 }
 
 func DialAddr(localAddr, remoteAddr string) (Conn, error) {
@@ -65,15 +60,15 @@ func DialAddr(localAddr, remoteAddr string) (Conn, error) {
 }
 
 func sendHandshake(rw io.ReadWriter) error {
-	var message = Message{"Hello World!"}
+	var message = Message{"This is the client!"}
 	var encoder = gob.NewEncoder(rw)
 	err := encoder.Encode(&message)
 	if err != nil {
 		return err
 	}
 
-	log.Debug("Sent handshake")
-	log.Debug("Waiting for reply")
+	// log.Debug("Sent handshake")
+	// log.Debug("Waiting for reply")
 
 	var reply Message
 	var decoder = gob.NewDecoder(rw)
@@ -82,7 +77,7 @@ func sendHandshake(rw io.ReadWriter) error {
 		return err
 	}
 
-	log.Debug("Received reply", "msg", reply.Data)
+	// log.Debug("Received reply", "msg", reply.Data)
 
 	// Avoid race condition
 	time.Sleep(100 * time.Millisecond)

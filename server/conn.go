@@ -110,7 +110,7 @@ func newSessionID() string {
 // goroutine, so use this channel to be notified when the connection can be
 // cleaned up.
 func (conn *Conn) Serve() {
-	conn.logger.Print(conn.sessionID, "Connection Established")
+	conn.logger.Print(conn.sessionID, "connection Established")
 	// send welcome
 	conn.writeMessage(220, conn.server.WelcomeMessage)
 	// read commands
@@ -131,7 +131,7 @@ func (conn *Conn) Serve() {
 		}
 	}
 	conn.Close()
-	conn.logger.Print(conn.sessionID, "Connection Terminated")
+	conn.logger.Print(conn.sessionID, "connection Terminated")
 }
 
 // Close will manually close this connection, even if the client isn't ready.
@@ -298,12 +298,14 @@ func (conn *Conn) sendDataOverSocketN(data io.Reader, socket DataSocket, length 
 	return nil
 }
 
-func (conn *Conn) partitionData() []striping.Segment {
+func (conn *Conn) partitionData() []*striping.Segment {
 
 	data := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	segments := []striping.Segment{
-		striping.NewSegment(data[:5], 0),
-		striping.NewSegment(data[5:], 5),
+	segments := []*striping.Segment{
+		striping.NewSegment(data[:2], 0),
+		striping.NewSegment(data[2:5], 2),
+		striping.NewSegment(data[5:6], 5),
+		striping.NewSegment(data[6:], 6),
 	}
 
 	return segments
@@ -313,21 +315,22 @@ func (conn *Conn) sendData() {
 
 	segments := conn.partitionData()
 
-	socket := conn.parallelSockets[0]
-	header := striping.NewEODCHeader(2)
-	err := SendOverSocket(socket, header)
+	eodc := striping.NewEODCHeader(uint64(len(segments)))
+	err := SendOverSocket(conn.parallelSockets[0], eodc)
+
 	if err != nil {
 		log.Error("Failed to send EODC Header", "err", err)
 	}
 
 	for i, segment := range segments {
 
-		header = segment.Header
-		header = header.AddFlag(striping.BlockFlagEndOfData)
+		if i > 1 {
+			segment.AddFlag(striping.BlockFlagEndOfData)
+		}
 
-		socket = conn.parallelSockets[i]
+		socket := conn.parallelSockets[i%2]
 
-		err := SendOverSocket(socket, header)
+		err := SendOverSocket(socket, segment.Header)
 		if err != nil {
 			log.Error("Failed to write header", "err", err)
 		}

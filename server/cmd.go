@@ -285,7 +285,7 @@ func (cmd commandEprt) Execute(conn *Conn, param string) {
 		return
 	}
 	conn.socket = socket
-	conn.writeMessage(200, "Connection established ("+strconv.Itoa(port)+")")
+	conn.writeMessage(200, "connection established ("+strconv.Itoa(port)+")")
 }
 
 // commandEpsv responds to the EPSV FTP command. It allows the client to
@@ -629,7 +629,7 @@ func (cmd commandPort) Execute(conn *Conn, param string) {
 		return
 	}
 	conn.socket = socket
-	conn.writeMessage(200, "Connection established ("+strconv.Itoa(port)+")")
+	conn.writeMessage(200, "connection established ("+strconv.Itoa(port)+")")
 }
 
 // commandPwd responds to the PWD FTP command.

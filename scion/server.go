@@ -12,7 +12,7 @@ import (
 )
 
 func receiveHandshake(rw io.ReadWriter) error {
-	log.Debug("Waiting for handshake")
+	// log.Debug("Waiting for handshake")
 
 	var message Message
 	var decoder = gob.NewDecoder(rw)
@@ -21,19 +21,19 @@ func receiveHandshake(rw io.ReadWriter) error {
 		return err
 	}
 
-	log.Debug("Received Handshake", "msg", message.Data)
+	// log.Debug("Received Handshake", "msg", message.Data)
 
 	// Avoid race condition
 	time.Sleep(100 * time.Millisecond)
 
-	var reply = Message{"Yo, this is server speaking"}
+	var reply = Message{"Welcome to this server"}
 	var encoder = gob.NewEncoder(rw)
 	err = encoder.Encode(&reply)
 	if err != nil {
 		return nil
 	}
 
-	log.Debug("Sent reply")
+	// log.Debug("Sent reply")
 
 	return nil
 }

@@ -2,11 +2,9 @@ package ftp
 
 import (
 	"bufio"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/elwin/transmit/scion"
-	"github.com/elwin/transmit/striping"
 	"github.com/scionproto/scion/go/lib/snet"
 	"io"
 	"net/textproto"
@@ -651,15 +649,15 @@ func (server *ServerConn) RetrMultipleConns() error {
 		return err
 	}
 
-	var header striping.Header
-	err = binary.Read(conns[0], binary.BigEndian, &header)
+	transmission := NewTransmission()
+
+	err = transmission.AcceptData(conns)
+
 	if err != nil {
-		return nil
+		return err
 	}
 
-	if header.ContainsFlag(striping.BlockFlagEndOfDataCount) {
-
-	}
+	fmt.Println(transmission.data)
 
 	return nil
 }

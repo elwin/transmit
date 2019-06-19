@@ -3,6 +3,7 @@ package scion
 import (
 	"github.com/lucas-clemente/quic-go"
 	"github.com/scionproto/scion/go/lib/snet"
+	"sync"
 	"time"
 )
 
@@ -58,18 +59,42 @@ type Conn interface {
 	SetWriteDeadline(t time.Time) error
 }
 
-var _ Conn = Connection{}
+var _ Conn = connection{}
 
-type Connection struct {
+type connection struct {
 	quic.Stream
+	sync.Mutex
 	Local  snet.Addr
 	Remote snet.Addr
 }
 
-func (connection Connection) LocalAddr() snet.Addr {
+func NewConnection(stream quic.Stream, local, remote snet.Addr) *connection {
+	return &connection{
+		stream,
+		sync.Mutex{},
+		local,
+		remote,
+	}
+}
+
+func (connection connection) Read(b []byte) (n int, err error) {
+	connection.Lock()
+	defer connection.Unlock()
+
+	return connection.Stream.Read(b)
+}
+
+func (connection connection) Write(b []byte) (n int, err error) {
+	connection.Lock()
+	defer connection.Unlock()
+
+	return connection.Stream.Write(b)
+}
+
+func (connection connection) LocalAddr() snet.Addr {
 	return connection.Local
 }
 
-func (connection Connection) RemoteAddr() snet.Addr {
+func (connection connection) RemoteAddr() snet.Addr {
 	return connection.Remote
 }

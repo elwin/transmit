@@ -1,13 +1,13 @@
 package striping
 
 type Segment struct {
-	Header
+	*Header
 	Data []byte
 }
 
-func NewSegment(data []byte, offset int, flags ...uint8) Segment {
+func NewSegment(data []byte, offset int, flags ...uint8) *Segment {
 
-	return Segment{
+	return &Segment{
 		NewHeader(uint64(len(data)), uint64(offset), flags...),
 		data,
 	}

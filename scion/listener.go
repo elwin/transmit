@@ -49,9 +49,5 @@ func (listener ScionListener) Accept() (Conn, error) {
 		return nil, err
 	}
 
-	return &Connection{
-		stream,
-		listener.local,
-		*remoteAddr,
-	}, nil
+	return NewConnection(stream, listener.local, *remoteAddr), nil
 }
