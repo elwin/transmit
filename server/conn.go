@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 const (
@@ -322,29 +323,66 @@ func (conn *Conn) sendData() {
 		log.Error("Failed to send EODC Header", "err", err)
 	}
 
-	for i, segment := range segments {
+	var wg sync.WaitGroup
+	wg.Add(2)
 
-		if i > 1 {
-			segment.AddFlag(striping.BlockFlagEndOfData)
+	go func() {
+		defer wg.Done()
+
+		for i, segment := range segments[:2] {
+
+			if i == 1 {
+				segment.AddFlag(striping.BlockFlagEndOfData)
+			}
+
+			socket := conn.parallelSockets[0]
+
+			err := SendOverSocket(socket, segment.Header)
+			if err != nil {
+				log.Error("Failed to write header", "err", err)
+			}
+
+			reader := bytes.NewReader(segment.Data)
+			bytes, err := io.Copy(socket, reader)
+
+			if err != nil {
+				log.Error("Failed to copy data", "err", err)
+			}
+
+			message := "Successfully sent " + strconv.Itoa(int(bytes)) + " bytes"
+			conn.writeMessage(200, message)
 		}
+	}()
 
-		socket := conn.parallelSockets[i%2]
+	go func() {
+		defer wg.Done()
 
-		err := SendOverSocket(socket, segment.Header)
-		if err != nil {
-			log.Error("Failed to write header", "err", err)
+		for i, segment := range segments[2:] {
+
+			if i == 1 {
+				segment.AddFlag(striping.BlockFlagEndOfData)
+			}
+
+			socket := conn.parallelSockets[1]
+
+			err := SendOverSocket(socket, segment.Header)
+			if err != nil {
+				log.Error("Failed to write header", "err", err)
+			}
+
+			reader := bytes.NewReader(segment.Data)
+			bytes, err := io.Copy(socket, reader)
+
+			if err != nil {
+				log.Error("Failed to copy data", "err", err)
+			}
+
+			message := "Successfully sent " + strconv.Itoa(int(bytes)) + " bytes"
+			conn.writeMessage(200, message)
 		}
+	}()
 
-		reader := bytes.NewReader(segment.Data)
-		bytes, err := io.Copy(socket, reader)
-
-		if err != nil {
-			log.Error("Failed to copy data", "err", err)
-		}
-
-		message := "Successfully sent " + strconv.Itoa(int(bytes)) + " bytes"
-		conn.writeMessage(200, message)
-	}
+	wg.Wait()
 
 }
 
