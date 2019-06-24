@@ -59,7 +59,7 @@ type Conn interface {
 	SetWriteDeadline(t time.Time) error
 }
 
-var _ Conn = connection{}
+var _ Conn = &connection{}
 
 type connection struct {
 	quic.Stream
@@ -77,24 +77,24 @@ func NewConnection(stream quic.Stream, local, remote snet.Addr) *connection {
 	}
 }
 
-func (connection connection) Read(b []byte) (n int, err error) {
-	connection.Lock()
-	defer connection.Unlock()
+func (connection *connection) Read(b []byte) (n int, err error) {
+	// connection.Lock()
+	// defer connection.Unlock()
 
 	return connection.Stream.Read(b)
 }
 
-func (connection connection) Write(b []byte) (n int, err error) {
-	connection.Lock()
-	defer connection.Unlock()
+func (connection *connection) Write(b []byte) (n int, err error) {
+	// connection.Lock()
+	// defer connection.Unlock()
 
 	return connection.Stream.Write(b)
 }
 
-func (connection connection) LocalAddr() snet.Addr {
+func (connection *connection) LocalAddr() snet.Addr {
 	return connection.Local
 }
 
-func (connection connection) RemoteAddr() snet.Addr {
+func (connection *connection) RemoteAddr() snet.Addr {
 	return connection.Remote
 }

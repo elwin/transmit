@@ -6,21 +6,28 @@ import (
 	"github.com/elwin/transmit/scion"
 	"github.com/elwin/transmit/striping"
 	"github.com/scionproto/scion/go/lib/log"
-	"strconv"
+	"io"
 	"sync"
 )
 
-// Requires synchronisation
 // Fix uint / int difference
 type transmission struct {
 	eodTotal uint64
 	eodCount int64
+	len      uint64
 	data     []byte
 	sync.Mutex
 }
 
 func NewTransmission() *transmission {
 	return &transmission{data: make([]byte, 2)}
+}
+
+func (transmission *transmission) synchronized(f func()) {
+	transmission.Lock()
+	defer transmission.Unlock()
+
+	f()
 }
 
 func (transmission *transmission) setData(offset uint64, data []byte) {
@@ -34,8 +41,6 @@ func (transmission *transmission) setData(offset uint64, data []byte) {
 			required = 2 * actual
 		}
 
-		fmt.Printf("Required: %d - Actual: %d\n", required, actual)
-
 		temp := make([]byte, required)
 		copy(temp, transmission.data)
 		transmission.data = temp
@@ -44,8 +49,11 @@ func (transmission *transmission) setData(offset uint64, data []byte) {
 		actual = uint64(len(transmission.data))
 	}
 
+	if required > transmission.len {
+		transmission.len = required
+	}
+
 	copy(transmission.data[offset:], data)
-	fmt.Println(transmission.data)
 }
 
 func (transmission *transmission) Completed() bool {
@@ -53,56 +61,81 @@ func (transmission *transmission) Completed() bool {
 		uint64(transmission.eodCount) >= transmission.eodTotal
 }
 
+func (transmission *transmission) ProcessBlock(conn io.Reader, i int) (finished bool, err error) {
+
+	header := &striping.Header{}
+	err = binary.Read(conn, binary.BigEndian, header)
+	if err != nil {
+		return false, fmt.Errorf("failed to read header: %s", err)
+	}
+
+	finished = header.ContainsFlag(striping.BlockFlagEndOfData)
+
+	log.Debug(fmt.Sprintf("Received header (%d)", i), "hdr", *header)
+
+	// EOD header, contains no payload
+	if header.IsEODCount() {
+		transmission.synchronized(func() {
+			transmission.eodTotal = header.GetEODCount()
+		})
+
+		return finished, nil
+	}
+
+	data := make([]byte, header.ByteCount)
+	n, err := conn.Read(data)
+	if err != nil {
+		return false, fmt.Errorf("failed to read payload: %s", err)
+	}
+	n = n
+
+	log.Debug(fmt.Sprintf("Read %d bytes (%d)", n, i))
+
+	transmission.synchronized(func() {
+		transmission.setData(header.OffsetCount, data)
+		transmission.eodCount--
+	})
+
+	return finished, nil
+}
+
 func (transmission *transmission) AcceptData(conns []scion.Conn) error {
 
 	wg := sync.WaitGroup{}
 
-	for i, conn := range conns {
+	// i, conn := range conns
+	// ^ will lead to errors, don't know why
+	for i := range conns {
+
+		conn := conns[i]
 
 		wg.Add(1)
 
-		func(addr string) {
+		go func(i int) {
+
 			defer wg.Done()
 
 			for {
-				header := &striping.Header{}
-				err := binary.Read(conn, binary.BigEndian, header)
+				finished, err := transmission.ProcessBlock(conn, i)
 				if err != nil {
-					log.Error("failed to read header", "err", err)
+					log.Error("failed to process block", "err", err)
+					return
 				}
 
-				log.Debug(fmt.Sprintf("Read header on %s", addr), "hdr", *header)
-
-				// EOD header, contains no data
-				if header.IsEODCount() {
-					transmission.Lock()
-					transmission.eodTotal = header.GetEODCount()
-					transmission.Unlock()
-					continue
-				}
-
-				data := make([]byte, header.ByteCount)
-				n, err := conn.Read(data)
-				if err != nil {
-					log.Error("failed to read data", "err", err)
-				}
-
-				log.Debug(fmt.Sprintf("Read %d bytes on %s", n, addr))
-				transmission.Lock()
-				transmission.setData(header.OffsetCount, data)
-				transmission.eodCount--
-				transmission.Unlock()
-
-				if header.ContainsFlag(striping.BlockFlagEndOfData) {
-					fmt.Println("EOD")
+				if finished {
 					return
 				}
 			}
 
-		}(string(strconv.Itoa(i)))
+		}(i)
 
 	}
 
 	wg.Wait()
+
 	return nil
+}
+
+func (transmission *transmission) getData() []byte {
+	return transmission.data[:transmission.len]
 }

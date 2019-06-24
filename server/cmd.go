@@ -1168,34 +1168,47 @@ func (cmd commandSpas) RequireAuth() bool {
 
 func (cmd commandSpas) Execute(conn *Conn, param string) {
 
-	port1 := rand.Intn(1000) + 40000
-	port2 := rand.Intn(1000) + 40000
-	address1 := conn.server.Hostname + ":" + strconv.Itoa(port1)
-	address2 := conn.server.Hostname + ":" + strconv.Itoa(port2)
-
-	listener1, err := scion.Listen(address1)
-	listener2, err := scion.Listen(address2)
-
-	// Somehow connection doesnt get accepted (stream or something
-	if err != nil {
-		log.Println(err)
-		conn.writeMessage(425, "Data connection failed")
-		return
+	ports := []int{
+		rand.Intn(1000) + 40000,
+		rand.Intn(1000) + 40000,
+		rand.Intn(1000) + 40000,
+		rand.Intn(1000) + 40000,
 	}
 
+	var listeners []scion.Listener
+
 	line := "Entering Striped Passive Mode\n"
-	line += " " + address1 + "\r\n"
-	line += " " + address2 + "\r\n"
+
+	for _, port := range ports {
+
+		address := conn.server.Hostname + ":" + strconv.Itoa(port)
+
+		listener, err := scion.Listen(address)
+		if err != nil {
+			log.Println(err)
+			conn.writeMessage(425, "Data connection failed")
+			return
+		}
+
+		line += " " + address + "\r\n"
+
+		listeners = append(listeners, listener)
+	}
 
 	conn.writeMessageMultiline(229, line)
 
-	stream1, _ := listener1.Accept()
-	stream2, _ := listener2.Accept()
+	for i, listener := range listeners {
+		stream, err := listener.Accept()
+		if err != nil {
+			log.Println(err)
+			conn.writeMessage(400, "Some error or Data connection failed")
+			return
+		}
 
-	socket1 := ScionSocket{stream1, port1}
-	socket2 := ScionSocket{stream2, port2}
+		socket := ScionSocket{stream, ports[i]}
+		conn.parallelSockets = append(conn.parallelSockets, socket)
+	}
 
-	conn.parallelSockets = append(conn.parallelSockets, socket1, socket2)
 }
 
 type commandEret struct{}

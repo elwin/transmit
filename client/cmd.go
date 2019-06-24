@@ -657,7 +657,7 @@ func (server *ServerConn) RetrMultipleConns() error {
 		return err
 	}
 
-	fmt.Println(transmission.data)
+	fmt.Println(transmission.getData())
 
 	return nil
 }

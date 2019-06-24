@@ -247,7 +247,7 @@ func (socket ScionSocket) Port() int {
 
 func SendOverSocket(socket DataSocket, header *striping.Header) error {
 
-	msg := fmt.Sprintf("Sent packet %d", socket.Port())
+	msg := fmt.Sprintf("Sent packet on port %d", socket.Port())
 	log.Debug(msg, "hdr", header)
 
 	return binary.Write(socket, binary.BigEndian, header)

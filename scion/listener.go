@@ -1,9 +1,11 @@
 package scion
 
 import (
+	"encoding/binary"
 	"fmt"
 	"github.com/lucas-clemente/quic-go"
 	"github.com/scionproto/scion/go/lib/snet"
+	"io"
 	"strings"
 )
 
@@ -50,4 +52,15 @@ func (listener ScionListener) Accept() (Conn, error) {
 	}
 
 	return NewConnection(stream, listener.local, *remoteAddr), nil
+}
+
+func receiveHandshake(rw io.ReadWriter) error {
+
+	msg := make([]byte, 1)
+	err := binary.Read(rw, binary.BigEndian, msg)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

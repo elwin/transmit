@@ -299,14 +299,31 @@ func (conn *Conn) sendDataOverSocketN(data io.Reader, socket DataSocket, length 
 	return nil
 }
 
-func (conn *Conn) partitionData() []*striping.Segment {
+func (conn *Conn) partitionData(data []byte, stride int) []*striping.Segment {
 
-	data := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	segments := []*striping.Segment{
-		striping.NewSegment(data[:2], 0),
-		striping.NewSegment(data[2:5], 2),
-		striping.NewSegment(data[5:6], 5),
-		striping.NewSegment(data[6:], 6),
+	/*
+		segments := []*striping.Segment{
+			striping.NewSegment(data[:2], 0),
+			striping.NewSegment(data[2:5], 2),
+			striping.NewSegment(data[5:6], 5),
+			striping.NewSegment(data[6:10], 6),
+			striping.NewSegment(data[10:], 10),
+		}
+	*/
+
+	var segments []*striping.Segment
+
+	for i := 0; i < len(data); i += stride {
+
+		start := i
+		end := i + stride
+		if end > len(data) {
+			end = len(data)
+		}
+
+		segment := striping.NewSegment(data[start:end], start)
+		segments = append(segments, segment)
+
 	}
 
 	return segments
@@ -314,9 +331,13 @@ func (conn *Conn) partitionData() []*striping.Segment {
 
 func (conn *Conn) sendData() {
 
-	segments := conn.partitionData()
+	data := list(1000)
 
-	eodc := striping.NewEODCHeader(uint64(len(segments)))
+	numSockets := len(conn.parallelSockets)
+
+	segments := conn.partitionData(data, 7)
+
+	eodc := striping.NewEODCHeader(uint64(numSockets))
 	err := SendOverSocket(conn.parallelSockets[0], eodc)
 
 	if err != nil {
@@ -324,18 +345,15 @@ func (conn *Conn) sendData() {
 	}
 
 	var wg sync.WaitGroup
-	wg.Add(2)
 
-	go func() {
-		defer wg.Done()
+	for i, segment := range segments {
 
-		for i, segment := range segments[:2] {
+		wg.Add(1)
 
-			if i == 1 {
-				segment.AddFlag(striping.BlockFlagEndOfData)
-			}
+		func() {
+			defer wg.Done()
 
-			socket := conn.parallelSockets[0]
+			socket := conn.parallelSockets[i%numSockets]
 
 			err := SendOverSocket(socket, segment.Header)
 			if err != nil {
@@ -351,38 +369,19 @@ func (conn *Conn) sendData() {
 
 			message := "Successfully sent " + strconv.Itoa(int(bytes)) + " bytes"
 			conn.writeMessage(200, message)
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-
-		for i, segment := range segments[2:] {
-
-			if i == 1 {
-				segment.AddFlag(striping.BlockFlagEndOfData)
-			}
-
-			socket := conn.parallelSockets[1]
-
-			err := SendOverSocket(socket, segment.Header)
-			if err != nil {
-				log.Error("Failed to write header", "err", err)
-			}
-
-			reader := bytes.NewReader(segment.Data)
-			bytes, err := io.Copy(socket, reader)
-
-			if err != nil {
-				log.Error("Failed to copy data", "err", err)
-			}
-
-			message := "Successfully sent " + strconv.Itoa(int(bytes)) + " bytes"
-			conn.writeMessage(200, message)
-		}
-	}()
+		}()
+	}
 
 	wg.Wait()
+
+	// Send EOD
+	for i := range conn.parallelSockets {
+		eod := striping.NewHeader(0, 0, striping.BlockFlagEndOfData)
+		err := SendOverSocket(conn.parallelSockets[i], eod)
+		if err != nil {
+			log.Error("Failed to write EOD header", "err", err)
+		}
+	}
 
 }
 
@@ -395,3 +394,11 @@ func (conn *Conn) transmitData(header striping.Header, parallelSockets DataSocke
 	parallelSockets.Write(data)
 
 }*/
+
+func list(max int) []byte {
+	result := make([]byte, max)
+	for i := range result {
+		result[i] = byte(i)
+	}
+	return result
+}

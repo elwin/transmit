@@ -1,13 +1,13 @@
 package scion
 
 import (
-	"encoding/gob"
+	"encoding/binary"
 	"fmt"
+	"github.com/scionproto/scion/go/lib/log"
 	"github.com/scionproto/scion/go/lib/sciond"
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/snet/squic"
 	"io"
-	"time"
 )
 
 func Dial(local, remote snet.Addr) (Conn, error) {
@@ -60,27 +60,12 @@ func DialAddr(localAddr, remoteAddr string) (Conn, error) {
 }
 
 func sendHandshake(rw io.ReadWriter) error {
-	var message = Message{"This is the client!"}
-	var encoder = gob.NewEncoder(rw)
-	err := encoder.Encode(&message)
-	if err != nil {
-		return err
-	}
 
-	// log.Debug("Sent handshake")
-	// log.Debug("Waiting for reply")
+	msg := []byte{200}
 
-	var reply Message
-	var decoder = gob.NewDecoder(rw)
-	err = decoder.Decode(&reply)
-	if err != nil {
-		return err
-	}
+	binary.Write(rw, binary.BigEndian, msg)
 
-	// log.Debug("Received reply", "msg", reply.Data)
-
-	// Avoid race condition
-	time.Sleep(100 * time.Millisecond)
+	log.Debug("Sent handshake", "msg", msg)
 
 	return nil
 }
