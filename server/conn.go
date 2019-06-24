@@ -299,43 +299,14 @@ func (conn *Conn) sendDataOverSocketN(data io.Reader, socket DataSocket, length 
 	return nil
 }
 
-func (conn *Conn) partitionData(data []byte, stride int) []*striping.Segment {
-
-	/*
-		segments := []*striping.Segment{
-			striping.NewSegment(data[:2], 0),
-			striping.NewSegment(data[2:5], 2),
-			striping.NewSegment(data[5:6], 5),
-			striping.NewSegment(data[6:10], 6),
-			striping.NewSegment(data[10:], 10),
-		}
-	*/
-
-	var segments []*striping.Segment
-
-	for i := 0; i < len(data); i += stride {
-
-		start := i
-		end := i + stride
-		if end > len(data) {
-			end = len(data)
-		}
-
-		segment := striping.NewSegment(data[start:end], start)
-		segments = append(segments, segment)
-
-	}
-
-	return segments
-}
-
 func (conn *Conn) sendData() {
 
-	data := list(10)
+	data := list(100)
 
 	numSockets := len(conn.parallelSockets)
 
-	segments := conn.partitionData(data, 4)
+	segments := partitionData(data, 10)
+	segQueues := distributeSegments(segments, numSockets)
 
 	eodc := striping.NewEODCHeader(uint64(numSockets))
 	err := SendOverSocket(conn.parallelSockets[0], eodc)
@@ -346,30 +317,32 @@ func (conn *Conn) sendData() {
 
 	var wg sync.WaitGroup
 
-	for i, segment := range segments {
-
+	for i, queue := range segQueues {
 		wg.Add(1)
-
-		func() {
+		go func(queue SegmentQueue) {
 			defer wg.Done()
 
-			socket := conn.parallelSockets[i%numSockets]
+			socket := conn.parallelSockets[i]
 
-			err := SendOverSocket(socket, segment.Header)
-			if err != nil {
-				log.Error("Failed to write header", "err", err)
+			for !queue.Empty() {
+				segment := queue.Dequeue()
+
+				err := SendOverSocket(socket, segment.Header)
+				if err != nil {
+					log.Error("Failed to write header", "err", err)
+				}
+
+				reader := bytes.NewReader(segment.Data)
+				n, err := io.Copy(socket, reader)
+
+				if err != nil {
+					log.Error("Failed to copy data", "err", err)
+				}
+
+				message := "Successfully sent " + strconv.Itoa(int(n)) + " bytes"
+				conn.writeMessage(200, message)
 			}
-
-			reader := bytes.NewReader(segment.Data)
-			bytes, err := io.Copy(socket, reader)
-
-			if err != nil {
-				log.Error("Failed to copy data", "err", err)
-			}
-
-			message := "Successfully sent " + strconv.Itoa(int(bytes)) + " bytes"
-			conn.writeMessage(200, message)
-		}()
+		}(queue)
 	}
 
 	wg.Wait()

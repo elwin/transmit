@@ -2,18 +2,23 @@ package server
 
 import "github.com/elwin/transmit/striping"
 
-type StripingQueue interface {
+type SegmentQueue interface {
 	Enqueue(segment *striping.Segment)
 	Dequeue() *striping.Segment
 	Len() int
+	Empty() bool
 }
 
-var _ StripingQueue = StripingQueueImplementation{}
+var _ SegmentQueue = &SegmentQueueImplementation{}
 
 // This implementation is NOT thread safe
-type StripingQueueImplementation struct {
+type SegmentQueueImplementation struct {
 	first *Element
 	len   int
+}
+
+func (queue *SegmentQueueImplementation) Empty() bool {
+	return !(queue.len > 0)
 }
 
 type Element struct {
@@ -21,7 +26,7 @@ type Element struct {
 	prev, next *Element
 }
 
-func (queue StripingQueueImplementation) Enqueue(segment *striping.Segment) {
+func (queue *SegmentQueueImplementation) Enqueue(segment *striping.Segment) {
 	e := &Element{segment, nil, nil}
 
 	if queue.first == nil {
@@ -39,14 +44,29 @@ func (queue StripingQueueImplementation) Enqueue(segment *striping.Segment) {
 	queue.len++
 }
 
-func (queue StripingQueueImplementation) Dequeue() *striping.Segment {
+func (queue *SegmentQueueImplementation) Dequeue() *striping.Segment {
+
+	// Maybe return error
+	if queue.first == nil {
+		panic("Cannot dequeue from empty queue")
+	}
+
 	e := queue.first
 	queue.first = e.next
-	queue.first.prev = nil
+	if queue.first != nil {
+		queue.first.prev = nil
+	}
 	e.next = nil
+
+	queue.len--
+
 	return e.value
 }
 
-func (queue StripingQueueImplementation) Len() int {
+func (queue *SegmentQueueImplementation) Len() int {
 	return queue.len
+}
+
+func NewSegmentQueue() SegmentQueue {
+	return &SegmentQueueImplementation{}
 }

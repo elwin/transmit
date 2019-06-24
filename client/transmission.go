@@ -107,11 +107,9 @@ func (transmission *transmission) AcceptData(conns []scion.Conn) error {
 	// ^ will lead to errors, don't know why
 	for i := range conns {
 
-		conn := conns[i]
-
 		wg.Add(1)
 
-		go func(i int) {
+		go func(conn scion.Conn, i int) {
 
 			defer wg.Done()
 
@@ -127,7 +125,7 @@ func (transmission *transmission) AcceptData(conns []scion.Conn) error {
 				}
 			}
 
-		}(i)
+		}(conns[i], i)
 
 	}
 
