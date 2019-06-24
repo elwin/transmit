@@ -301,11 +301,11 @@ func (conn *Conn) sendDataOverSocketN(data io.Reader, socket DataSocket, length 
 
 func (conn *Conn) sendData() {
 
-	data := list(10000)
+	data := list(100000)
 
 	numSockets := len(conn.parallelSockets)
 
-	segments := partitionData(data, 1000)
+	segments := partitionData(data, 100)
 	segQueues := distributeSegments(segments, numSockets)
 
 	eodc := striping.NewEODCHeader(uint64(numSockets))
@@ -341,7 +341,8 @@ func (conn *Conn) sendData() {
 				}
 
 				message := "Successfully sent " + strconv.Itoa(int(n)) + " bytes"
-				conn.writeMessage(200, message)
+				message = message
+				// conn.writeMessage(200, message)
 			}
 		}(segQueues[i], i)
 	}
