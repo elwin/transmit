@@ -301,11 +301,11 @@ func (conn *Conn) sendDataOverSocketN(data io.Reader, socket DataSocket, length 
 
 func (conn *Conn) sendData() {
 
-	data := list(100)
+	data := list(10000)
 
 	numSockets := len(conn.parallelSockets)
 
-	segments := partitionData(data, 10)
+	segments := partitionData(data, 1000)
 	segQueues := distributeSegments(segments, numSockets)
 
 	eodc := striping.NewEODCHeader(uint64(numSockets))
@@ -317,9 +317,10 @@ func (conn *Conn) sendData() {
 
 	var wg sync.WaitGroup
 
-	for i, queue := range segQueues {
+	for i := range segQueues {
 		wg.Add(1)
-		go func(queue SegmentQueue) {
+
+		go func(queue SegmentQueue, i int) {
 			defer wg.Done()
 
 			socket := conn.parallelSockets[i]
@@ -342,7 +343,7 @@ func (conn *Conn) sendData() {
 				message := "Successfully sent " + strconv.Itoa(int(n)) + " bytes"
 				conn.writeMessage(200, message)
 			}
-		}(queue)
+		}(segQueues[i], i)
 	}
 
 	wg.Wait()
