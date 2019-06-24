@@ -331,11 +331,11 @@ func (conn *Conn) partitionData(data []byte, stride int) []*striping.Segment {
 
 func (conn *Conn) sendData() {
 
-	data := list(1000)
+	data := list(10)
 
 	numSockets := len(conn.parallelSockets)
 
-	segments := conn.partitionData(data, 7)
+	segments := conn.partitionData(data, 4)
 
 	eodc := striping.NewEODCHeader(uint64(numSockets))
 	err := SendOverSocket(conn.parallelSockets[0], eodc)

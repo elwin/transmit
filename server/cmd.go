@@ -1170,9 +1170,9 @@ func (cmd commandSpas) Execute(conn *Conn, param string) {
 
 	ports := []int{
 		rand.Intn(1000) + 40000,
-		rand.Intn(1000) + 40000,
-		rand.Intn(1000) + 40000,
-		rand.Intn(1000) + 40000,
+		// rand.Intn(1000) + 40000,
+		// rand.Intn(1000) + 40000,
+		// rand.Intn(1000) + 40000,
 	}
 
 	var listeners []scion.Listener
