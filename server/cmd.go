@@ -692,28 +692,36 @@ func (cmd commandRetr) RequireAuth() bool {
 
 func (cmd commandRetr) Execute(conn *Conn, param string) {
 
-	conn.sendData()
+	path := conn.buildPath(param)
+	defer func() {
+		conn.lastFilePos = 0
+		conn.appendData = false
+	}()
+	bytes, data, err := conn.driver.GetFile(path, conn.lastFilePos)
+	if err == nil {
+		defer data.Close()
 
-	// This is the actual program, do not delete!
-	/*
-		path := conn.buildPath(param)
-		defer func() {
-			conn.lastFilePos = 0
-			conn.appendData = false
-		}()
-		bytes, data, err := conn.driver.GetFile(path, conn.lastFilePos)
-		if err == nil {
-			defer data.Close()
+		if conn.extendedMode {
+
+			conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes on %d connections", bytes, len(conn.parallelSockets)))
+
+			err := conn.sendData(data, int(bytes))
+			if err != nil {
+				conn.writeMessage(551, "Error reading file")
+			}
+
+		} else {
 			conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes", bytes))
 			err = conn.sendOutofBandDataWriter(data)
 
 			if err != nil {
 				conn.writeMessage(551, "Error reading file")
 			}
-		} else {
-			conn.writeMessage(551, "File not available")
 		}
-	*/
+	} else {
+		conn.writeMessage(551, "File not available")
+	}
+
 }
 
 type commandRest struct{}
@@ -1172,7 +1180,7 @@ func (cmd commandSpas) Execute(conn *Conn, param string) {
 		rand.Intn(1000) + 40000,
 		rand.Intn(1000) + 40000,
 		rand.Intn(1000) + 40000,
-		// rand.Intn(1000) + 40000,
+		rand.Intn(1000) + 40000,
 	}
 
 	var listeners []scion.Listener

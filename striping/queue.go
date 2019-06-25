@@ -1,10 +1,8 @@
-package server
-
-import "github.com/elwin/transmit/striping"
+package striping
 
 type SegmentQueue interface {
-	Enqueue(segment *striping.Segment)
-	Dequeue() *striping.Segment
+	Enqueue(segment *Segment)
+	Dequeue() *Segment
 	Len() int
 	Empty() bool
 }
@@ -22,11 +20,11 @@ func (queue *SegmentQueueImplementation) Empty() bool {
 }
 
 type Element struct {
-	value      *striping.Segment
+	value      *Segment
 	prev, next *Element
 }
 
-func (queue *SegmentQueueImplementation) Enqueue(segment *striping.Segment) {
+func (queue *SegmentQueueImplementation) Enqueue(segment *Segment) {
 	e := &Element{segment, nil, nil}
 
 	if queue.first == nil {
@@ -44,7 +42,7 @@ func (queue *SegmentQueueImplementation) Enqueue(segment *striping.Segment) {
 	queue.len++
 }
 
-func (queue *SegmentQueueImplementation) Dequeue() *striping.Segment {
+func (queue *SegmentQueueImplementation) Dequeue() *Segment {
 
 	// Maybe return error
 	if queue.first == nil {

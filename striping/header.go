@@ -13,6 +13,10 @@ const (
 	BlockFlagRestartMarker uint8 = 16
 )
 
+// The header is sent over the data channels and indicates
+// information about the following data (if any)
+// See https://www.ogf.org/documents/GWD-R/GFD-R.020.pdf
+// section "Extended Block Mode"
 type Header struct {
 	Descriptor  uint8
 	ByteCount   uint64

@@ -69,13 +69,6 @@ type Entry struct {
 	Time time.Time
 }
 
-// Response represents a data-connection
-type Response struct {
-	conn   scion.Conn
-	c      *ServerConn
-	closed bool
-}
-
 // DialAddr connects to the specified address with optinal options
 func Dial(remote string, options ...DialOption) (*ServerConn, error) {
 	do := &dialOptions{}

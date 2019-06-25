@@ -3,6 +3,8 @@ package main
 import (
 	"github.com/elwin/transmit/client"
 	"github.com/scionproto/scion/go/lib/log"
+	"io"
+	"os"
 	"time"
 )
 
@@ -28,10 +30,14 @@ func main() {
 		log.Error("Could not switch mode", "err", err)
 	}
 
-	err = conn.RetrMultipleConns()
+	response, err := conn.Retr("yolo.txt")
 	if err != nil {
 		log.Error("Something failed", "err", err)
 	}
+
+	f, _ := os.Create("/home/elwin/ftp/result.txt")
+	_, err = io.Copy(f, response)
+	response.Close()
 
 	/*
 			response, err := conn.Retr("yolo.txt")
@@ -59,7 +65,7 @@ func main() {
 			log.Error("Creating file", "err", err)
 		}
 
-		reader := make([]*ftp.Response, 5)
+		reader := make([]*ftp.SingleConnectionResponse, 5)
 		var wg sync.WaitGroup
 		wg.Add(5)
 		for i := 0; i < 5; i++ {

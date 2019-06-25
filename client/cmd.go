@@ -2,6 +2,7 @@ package ftp
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/elwin/transmit/scion"
@@ -333,7 +334,7 @@ func (server *ServerConn) NameList(path string) (entries []string, err error) {
 		return
 	}
 
-	r := &Response{conn: conn, c: server}
+	r := &SingleConnectionResponse{conn: conn, c: server}
 	defer r.Close()
 
 	scanner := bufio.NewScanner(r)
@@ -364,7 +365,7 @@ func (server *ServerConn) List(path string) (entries []*Entry, err error) {
 		return
 	}
 
-	r := &Response{conn: conn, c: server}
+	r := &SingleConnectionResponse{conn: conn, c: server}
 	defer r.Close()
 
 	scanner := bufio.NewScanner(r)
@@ -428,21 +429,51 @@ func (server *ServerConn) FileSize(path string) (int64, error) {
 // FTP server.
 //
 // The returned ReadCloser must be closed to cleanup the FTP data connection.
-func (server *ServerConn) Retr(path string) (*Response, error) {
-	return server.RetrFrom(path, 0)
+func (server *ServerConn) Retr(path string) (Response, error) {
+
+	if server.extendedMode {
+
+		conns, err := server.openDataConns()
+		if err != nil {
+			return nil, err
+		}
+
+		err = server.dispatchCmd("RETR %s", path)
+		if err != nil {
+			return nil, err
+		}
+
+		transmission := NewTransmission()
+
+		err = transmission.AcceptData(conns)
+		if err != nil {
+			return nil, err
+		}
+
+		fmt.Println(string(transmission.getData()))
+
+		reader := bytes.NewReader(transmission.getData())
+
+		return &MultiConnectionResponse{reader}, nil
+
+	} else {
+
+		return server.RetrFrom(path, 0)
+
+	}
 }
 
 // RetrFrom issues a RETR FTP command to fetch the specified file from the remote
 // FTP server, the server will not send the offset first bytes of the file.
 //
 // The returned ReadCloser must be closed to cleanup the FTP data connection.
-func (server *ServerConn) RetrFrom(path string, offset uint64) (*Response, error) {
+func (server *ServerConn) RetrFrom(path string, offset uint64) (Response, error) {
 	conn, err := server.cmdDataConnFrom(offset, "RETR %s", path)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Response{conn: conn, c: server}, nil
+	return &SingleConnectionResponse{conn: conn, c: server}, nil
 }
 
 // Stor issues a STOR FTP command to store a file to the remote FTP server.
@@ -599,7 +630,7 @@ func (server *ServerConn) spas() ([]snet.Addr, error) {
 	return addrs, nil
 }
 
-func (server *ServerConn) Eret(path string, offset, length int) (*Response, error) {
+func (server *ServerConn) Eret(path string, offset, length int) (Response, error) {
 
 	sockets, err := server.openDataConns()
 	socket := sockets[0]
@@ -623,7 +654,7 @@ func (server *ServerConn) Eret(path string, offset, length int) (*Response, erro
 		return nil, err
 	}
 
-	return &Response{conn: socket, c: server}, nil
+	return &SingleConnectionResponse{conn: socket, c: server}, nil
 }
 
 func (server *ServerConn) Mode(mode byte) error {
@@ -635,54 +666,4 @@ func (server *ServerConn) Mode(mode byte) error {
 
 	server.extendedMode = true
 	return nil
-}
-
-func (server *ServerConn) RetrMultipleConns() error {
-
-	conns, err := server.openDataConns()
-	if err != nil {
-		return err
-	}
-
-	err = server.dispatchCmd("RETR %s", "yolo.txt")
-	if err != nil {
-		return err
-	}
-
-	transmission := NewTransmission()
-
-	err = transmission.AcceptData(conns)
-
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(transmission.getData())
-
-	return nil
-}
-
-// Read implements the io.Reader interface on a FTP data connection.
-func (r *Response) Read(buf []byte) (int, error) {
-	return r.conn.Read(buf)
-}
-
-// Close implements the io.Closer interface on a FTP data connection.
-// After the first call, Close will do nothing and return nil.
-func (r *Response) Close() error {
-	if r.closed {
-		return nil
-	}
-	err := r.conn.Close()
-	_, _, err2 := r.c.conn.ReadResponse(StatusClosingDataConnection)
-	if err2 != nil {
-		err = err2
-	}
-	r.closed = true
-	return err
-}
-
-// SetDeadline sets the deadlines associated with the connection.
-func (r *Response) SetDeadline(t time.Time) error {
-	return r.conn.SetDeadline(t)
 }

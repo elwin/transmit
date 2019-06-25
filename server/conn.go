@@ -299,20 +299,24 @@ func (conn *Conn) sendDataOverSocketN(data io.Reader, socket DataSocket, length 
 	return nil
 }
 
-func (conn *Conn) sendData() {
+func (conn *Conn) sendData(reader io.Reader, n int) error {
 
-	data := list(100000)
+	data := make([]byte, n)
+	_, err := reader.Read(data)
+	if err != nil {
+		return fmt.Errorf("failed to read data: %s", err)
+	}
 
 	numSockets := len(conn.parallelSockets)
 
-	segments := partitionData(data, 100)
-	segQueues := distributeSegments(segments, numSockets)
+	segments := striping.PartitionData(data, 200)
+	segQueues := striping.DistributeSegments(segments, numSockets)
 
 	eodc := striping.NewEODCHeader(uint64(numSockets))
-	err := SendOverSocket(conn.parallelSockets[0], eodc)
+	err = SendOverSocket(conn.parallelSockets[0], eodc)
 
 	if err != nil {
-		log.Error("Failed to send EODC Header", "err", err)
+		return fmt.Errorf("failed to send EODC Header: %s", err)
 	}
 
 	var wg sync.WaitGroup
@@ -320,7 +324,7 @@ func (conn *Conn) sendData() {
 	for i := range segQueues {
 		wg.Add(1)
 
-		go func(queue SegmentQueue, i int) {
+		go func(queue striping.SegmentQueue, i int) {
 			defer wg.Done()
 
 			socket := conn.parallelSockets[i]
@@ -340,8 +344,8 @@ func (conn *Conn) sendData() {
 					log.Error("Failed to copy data", "err", err)
 				}
 
-				message := "Successfully sent " + strconv.Itoa(int(n)) + " bytes"
-				message = message
+				n = n
+				// message := "Successfully sent " + strconv.Itoa(int(n)) + " bytes"
 				// conn.writeMessage(200, message)
 			}
 		}(segQueues[i], i)
@@ -354,10 +358,11 @@ func (conn *Conn) sendData() {
 		eod := striping.NewHeader(0, 0, striping.BlockFlagEndOfData)
 		err := SendOverSocket(conn.parallelSockets[i], eod)
 		if err != nil {
-			log.Error("Failed to write EOD header", "err", err)
+			return fmt.Errorf("failed to write EOD header: %s", err)
 		}
 	}
 
+	return nil
 }
 
 /*
