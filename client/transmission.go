@@ -71,7 +71,7 @@ func (transmission *transmission) ProcessBlock(conn io.Reader, i int) (finished 
 
 	finished = header.ContainsFlag(striping.BlockFlagEndOfData)
 
-	log.Debug(fmt.Sprintf("Received header (%d)", i), "hdr", *header)
+	// log.Debug(fmt.Sprintf("Received header (%d)", i), "hdr", *header)
 
 	// EOD header, contains no payload
 	if header.IsEODCount() {
@@ -89,7 +89,7 @@ func (transmission *transmission) ProcessBlock(conn io.Reader, i int) (finished 
 	}
 	n = n
 
-	log.Debug(fmt.Sprintf("Read %d bytes (%d)", n, i))
+	// log.Debug(fmt.Sprintf("Read %d bytes (%d)", n, i))
 
 	transmission.synchronized(func() {
 		transmission.setData(header.OffsetCount, data)

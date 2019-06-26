@@ -334,14 +334,14 @@ func (conn *Conn) sendData(reader io.Reader, n int) error {
 
 				err := SendOverSocket(socket, segment.Header)
 				if err != nil {
-					log.Error("Failed to write header", "err", err)
+					log.Debug("Failed to write header", "err", err)
 				}
 
 				reader := bytes.NewReader(segment.Data)
 				n, err := io.Copy(socket, reader)
 
 				if err != nil {
-					log.Error("Failed to copy data", "err", err)
+					log.Debug("Failed to copy data", "err", err)
 				}
 
 				n = n

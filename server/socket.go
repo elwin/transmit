@@ -7,10 +7,8 @@ package server
 import (
 	"crypto/tls"
 	"encoding/binary"
-	"fmt"
 	"github.com/elwin/transmit/scion"
 	"github.com/elwin/transmit/striping"
-	"github.com/scionproto/scion/go/lib/log"
 	"io"
 	"net"
 	"os"
@@ -216,7 +214,7 @@ type ScionSocket struct {
 
 func (socket ScionSocket) Write(p []byte) (n int, err error) {
 
-	fmt.Println(p)
+	// fmt.Println(p)
 
 	return socket.conn.Write(p)
 }
@@ -231,7 +229,7 @@ func (socket ScionSocket) Host() string {
 
 func (socket ScionSocket) Read(p []byte) (n int, err error) {
 
-	fmt.Println(p)
+	// fmt.Println(p)
 
 	return socket.conn.Read(p)
 }
@@ -247,8 +245,8 @@ func (socket ScionSocket) Port() int {
 
 func SendOverSocket(socket DataSocket, header *striping.Header) error {
 
-	msg := fmt.Sprintf("Sent packet on port %d", socket.Port())
-	log.Debug(msg, "hdr", header)
+	// msg := fmt.Sprintf("Sent packet on port %d", socket.Port())
+	// log.Debug(msg, "hdr", header)
 
 	return binary.Write(socket, binary.BigEndian, header)
 
