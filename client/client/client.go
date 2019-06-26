@@ -25,10 +25,11 @@ func main() {
 		log.Error("Failed to authenticate", "err", err)
 	}
 
-	err = conn.Mode(ftp.ModeExtendedBlockMode)
-	if err != nil {
-		log.Error("Could not switch mode", "err", err)
-	}
+	/*
+		err = conn.Mode(ftp.ModeExtendedBlockMode)
+		if err != nil {
+			log.Error("Could not switch mode", "err", err)
+		}*/
 
 	response, err := conn.Retr("yolo.txt")
 	if err != nil {

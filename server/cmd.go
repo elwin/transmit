@@ -8,6 +8,7 @@ import (
 	"fmt"
 	ftp "github.com/elwin/transmit/client"
 	"github.com/elwin/transmit/scion"
+	"io"
 	"log"
 	"math/rand"
 	"strconv"
@@ -705,7 +706,11 @@ func (cmd commandRetr) Execute(conn *Conn, param string) {
 
 			conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes on %d connections", bytes, len(conn.parallelSockets)))
 
-			err := conn.sendData(data, int(bytes))
+			writer := NewMultisocket(conn.parallelSockets, 100)
+			n, err := io.Copy(writer, data)
+			fmt.Println(n)
+			fmt.Println(bytes)
+
 			if err != nil {
 				conn.writeMessage(551, "Error reading file")
 			}

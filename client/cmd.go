@@ -450,7 +450,7 @@ func (server *ServerConn) Retr(path string) (Response, error) {
 			return nil, err
 		}
 
-		fmt.Println(string(transmission.getData()))
+		// fmt.Println(string(transmission.getData()))
 
 		reader := bytes.NewReader(transmission.getData())
 

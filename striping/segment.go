@@ -13,3 +13,8 @@ func NewSegment(data []byte, offset int, flags ...uint8) *Segment {
 	}
 
 }
+
+func NewEODCSegment(count uint64) *Segment {
+	return &Segment{NewEODCHeader(count), nil}
+
+}
