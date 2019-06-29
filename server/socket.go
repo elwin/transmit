@@ -5,17 +5,13 @@
 package server
 
 import (
-	"crypto/tls"
 	"encoding/binary"
-	"github.com/elwin/transmit/scion"
-	"github.com/elwin/transmit/striping"
 	"io"
 	"net"
-	"os"
-	"runtime"
 	"strconv"
-	"sync"
-	"syscall"
+
+	"github.com/elwin/transmit/scion"
+	"github.com/elwin/transmit/striping"
 )
 
 // DataSocket describes a data parallelSockets is used to send non-control data between the client and
@@ -97,124 +93,12 @@ func (socket *ftpActiveSocket) Close() error {
 	return socket.conn.Close()
 }
 
-type ftpPassiveSocket struct {
-	conn      net.Conn
-	port      int
-	host      string
-	ingress   chan []byte
-	egress    chan []byte
-	logger    Logger
-	lock      sync.Mutex // protects conn and err
-	err       error
-	tlsConfig *tls.Config
-}
-
-// Detect if an error is "bind: address already in use"
-//
-// Originally from https://stackoverflow.com/a/52152912/164234
-func isErrorAddressAlreadyInUse(err error) bool {
-	errOpError, ok := err.(*net.OpError)
-	if !ok {
-		return false
-	}
-	errSyscallError, ok := errOpError.Err.(*os.SyscallError)
-	if !ok {
-		return false
-	}
-	errErrno, ok := errSyscallError.Err.(syscall.Errno)
-	if !ok {
-		return false
-	}
-	if errErrno == syscall.EADDRINUSE {
-		return true
-	}
-	const WSAEADDRINUSE = 10048
-	if runtime.GOOS == "windows" && errErrno == WSAEADDRINUSE {
-		return true
-	}
-	return false
-}
-
-/*
-func newPassiveSocket(host string, port func() int, logger Logger, sessionID string, tlsConfig *tls.Config) (DataSocket, error) {
-	/*
-		parallelSockets := new(ftpPassiveSocket)
-		parallelSockets.ingress = make(chan []byte)
-		parallelSockets.egress = make(chan []byte)
-		parallelSockets.logger = logger
-		parallelSockets.host = host
-		parallelSockets.tlsConfig = tlsConfig
-		const retries = 10
-		var err error
-		for i := 1; i <= retries; i++ {
-			parallelSockets.port = port()
-			err = parallelSockets.GoListenAndServe(sessionID)
-			if err != nil && parallelSockets.port != 0 && isErrorAddressAlreadyInUse(err) {
-				// choose a different port on error already in use
-				continue
-			}
-			break
-		}
-		return parallelSockets, err
-*/
-/*
-
-	fmt.Println("Trying to create a parallelSockets")
-
-	listener, err := scion.Listen("1-ff00:0:110,[127.0.0.1]:40000")
-
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Println("Listening")
-
-	stream, err := listener.Accept()
-
-	fmt.Println("Accepted")
-
-	return ScionSocket{stream, 40002}, err
-}
-
-func (parallelSockets *ftpPassiveSocket) Host() string {
-	return parallelSockets.host
-}
-
-func (parallelSockets *ftpPassiveSocket) Port() int {
-	return parallelSockets.port
-}
-
-func (parallelSockets *ftpPassiveSocket) Read(p []byte) (n int, err error) {
-	parallelSockets.lock.Lock()
-	defer parallelSockets.lock.Unlock()
-	if parallelSockets.err != nil {
-		return 0, parallelSockets.err
-	}
-	return parallelSockets.conn.Read(p)
-}
-
-func (parallelSockets *ftpPassiveSocket) ReadFrom(r io.Reader) (int64, error) {
-	parallelSockets.lock.Lock()
-	defer parallelSockets.lock.Unlock()
-	if parallelSockets.err != nil {
-		return 0, parallelSockets.err
-	}
-
-	// For normal TCPConn, this will use sendfile syscall; if not,
-	// it will just downgrade to normal read/write procedure
-	return io.Copy(parallelSockets.conn, r)
-}
-
-*/
-
 type ScionSocket struct {
 	conn scion.Conn
 	port int
 }
 
 func (socket ScionSocket) Write(p []byte) (n int, err error) {
-
-	// fmt.Println(p)
 
 	return socket.conn.Write(p)
 }
@@ -228,8 +112,6 @@ func (socket ScionSocket) Host() string {
 }
 
 func (socket ScionSocket) Read(p []byte) (n int, err error) {
-
-	// fmt.Println(p)
 
 	return socket.conn.Read(p)
 }
@@ -245,84 +127,6 @@ func (socket ScionSocket) Port() int {
 
 func SendOverSocket(socket DataSocket, header *striping.Header) error {
 
-	// msg := fmt.Sprintf("Sent packet on port %d", socket.Port())
-	// log.Debug(msg, "hdr", header)
-
 	return binary.Write(socket, binary.BigEndian, header)
 
 }
-
-/*
-
-func (parallelSockets *ftpPassiveSocket) Write(p []byte) (n int, err error) {
-	parallelSockets.lock.Lock()
-	defer parallelSockets.lock.Unlock()
-	if parallelSockets.err != nil {
-		return 0, parallelSockets.err
-	}
-	return parallelSockets.conn.Write(p)
-}
-
-func (parallelSockets *ftpPassiveSocket) Close() error {
-	parallelSockets.lock.Lock()
-	defer parallelSockets.lock.Unlock()
-	if parallelSockets.conn != nil {
-		return parallelSockets.conn.Close()
-	}
-	return nil
-}
-
-func (parallelSockets *ftpPassiveSocket) GoListenAndServe(sessionID string) (err error) {
-	laddr, err := net.ResolveTCPAddr("tcp", net.JoinHostPort("", strconv.Itoa(parallelSockets.port)))
-	if err != nil {
-		parallelSockets.logger.Print(sessionID, err)
-		return
-	}
-
-	var tcplistener *net.TCPListener
-	tcplistener, err = net.ListenTCP("tcp", laddr)
-	if err != nil {
-		parallelSockets.logger.Print(sessionID, err)
-		return
-	}
-
-	// The timeout, for a remote client to establish connection
-	// with a PASV style data connection.
-	const acceptTimeout = 60 * time.Second
-	err = tcplistener.SetDeadline(time.Now().Add(acceptTimeout))
-	if err != nil {
-		parallelSockets.logger.Print(sessionID, err)
-		return
-	}
-
-	var listener net.Listener = tcplistener
-	add := listener.Addr()
-	parts := strings.Split(add.String(), ":")
-	port, err := strconv.Atoi(parts[len(parts)-1])
-	if err != nil {
-		parallelSockets.logger.Print(sessionID, err)
-		return
-	}
-
-	parallelSockets.port = port
-	if parallelSockets.tlsConfig != nil {
-		listener = tls.NewListener(listener, parallelSockets.tlsConfig)
-	}
-
-	parallelSockets.lock.Lock()
-	go func() {
-		defer parallelSockets.lock.Unlock()
-
-		conn, err := listener.Accept()
-		if err != nil {
-			parallelSockets.err = err
-			return
-		}
-		parallelSockets.err = nil
-		parallelSockets.conn = conn
-		_ = listener.Close()
-	}()
-	return nil
-}
-
-*/

@@ -12,15 +12,16 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
-	"github.com/elwin/transmit/scion"
-	"github.com/elwin/transmit/striping"
-	"github.com/scionproto/scion/go/lib/log"
 	"io"
 	random "math/rand"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/elwin/transmit/scion"
+	"github.com/elwin/transmit/striping"
+	"github.com/scionproto/scion/go/lib/log"
 )
 
 const (
@@ -69,28 +70,10 @@ func (conn *Conn) passiveListenIP() string {
 	return conn.conn.LocalAddr().Host.String()
 }
 
+// TODO: Replace generation with proper function
 func (conn *Conn) PassivePort() int {
 
 	return random.Intn(10000) + 40000
-
-	/*
-		if len(conn.server.PassivePorts) > 0 {
-			portRange := strings.Split(conn.server.PassivePorts, "-")
-
-			if len(portRange) != 2 {
-				log.Println("empty port")
-				return 0
-			}
-
-			minPort, _ := strconv.Atoi(strings.TrimSpace(portRange[0]))
-			maxPort, _ := strconv.Atoi(strings.TrimSpace(portRange[1]))
-
-			return minPort + mrand.Intn(maxPort-minPort)
-		}
-		// let system automatically chose one port
-		return 0
-
-	*/
 }
 
 // returns a random 20 char string that can be used as a unique session ID

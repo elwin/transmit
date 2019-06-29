@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/elwin/transmit/mode"
+
 	"github.com/elwin/transmit/client"
 	"github.com/scionproto/scion/go/lib/log"
 )
@@ -26,7 +28,7 @@ func main() {
 		log.Error("Failed to authenticate", "err", err)
 	}
 
-	err = conn.Mode(ftp.ModeExtendedBlockMode)
+	err = conn.Mode(mode.ModeExtendedBlockMode)
 	if err != nil {
 		log.Error("Could not switch mode", "err", err)
 	}

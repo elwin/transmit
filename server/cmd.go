@@ -11,7 +11,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/elwin/transmit/mode"
+
 	ftp "github.com/elwin/transmit/client"
+
 	"github.com/elwin/transmit/scion"
 )
 
@@ -1256,7 +1259,7 @@ func (commandEret) Execute(conn *Conn, param string) {
 	}
 	path := conn.buildPath(params[1])
 
-	if moduleName == ftp.PartialFileTransport {
+	if moduleName == mode.PartialFileTransport {
 
 		bytes, data, err := conn.driver.GetFile(path, int64(offset))
 		if err != nil {

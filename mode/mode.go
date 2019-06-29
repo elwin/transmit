@@ -1,4 +1,4 @@
-package ftp
+package mode
 
 // FTP modes
 const (
