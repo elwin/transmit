@@ -8,6 +8,7 @@ import (
 
 	"github.com/elwin/transmit/scion"
 	"github.com/elwin/transmit/striping"
+	"github.com/scionproto/scion/go/lib/log"
 )
 
 // Fix uint / int difference
@@ -71,7 +72,7 @@ func (transmission *transmission) ProcessBlock(conn io.Reader, i int) (finished 
 
 	finished = header.ContainsFlag(striping.BlockFlagEndOfData)
 
-	// log.Debug(fmt.Sprintf("Received header (%d)", i), "hdr", *header)
+	log.Debug(fmt.Sprintf("Received header (%d)", i), "hdr", *header)
 
 	// EOD header, contains no payload
 	if header.IsEODCount() {

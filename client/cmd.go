@@ -594,7 +594,7 @@ func (server *ServerConn) Quit() error {
 	server.dispatchCmd("QUIT")
 
 	// Otherwise data connection will be closed before data is even sent
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(1000 * time.Millisecond)
 
 	return server.conn.Close()
 }

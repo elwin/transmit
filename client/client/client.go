@@ -1,11 +1,11 @@
 package main
 
 import (
+	"fmt"
+	"github.com/elwin/transmit/mode"
 	"io"
 	"os"
 	"time"
-
-	"github.com/elwin/transmit/mode"
 
 	"github.com/elwin/transmit/client"
 	"github.com/scionproto/scion/go/lib/log"
@@ -18,10 +18,10 @@ func main() {
 		// ftp.DialWithDebugOutput(os.Stdout),
 		ftp.DialWithTimeout(60*time.Second),
 	)
-
 	if err != nil {
 		log.Error("Failed to dial", "err", err)
 	}
+	defer conn.Quit()
 
 	err = conn.Login("admin", "123456")
 	if err != nil {
@@ -37,10 +37,13 @@ func main() {
 	if err != nil {
 		log.Error("Something failed", "err", err)
 	}
+	defer response.Close()
 
 	f, _ := os.Create("/home/elwin/ftp/result.txt")
 	_, err = io.Copy(f, response)
-	response.Close()
 
-	conn.Quit()
+	entries, _ := conn.List("/")
+	for _, entry := range entries {
+		fmt.Println(entry.Name)
+	}
 }

@@ -1,11 +1,9 @@
 package server
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/elwin/transmit/socket"
 
@@ -29,33 +27,6 @@ func NewMultisocket(sockets []socket.DataSocket, maxLength int) *multisocket {
 	}
 }
 
-func (socket *multisocket) _Write(reader io.Reader) {
-	eodc := striping.NewEODCHeader(1)
-	sendHeader(socket.sockets[0], eodc)
-
-	curPos := 0
-
-	for {
-
-		buf := make([]byte, socket.maxLength)
-
-		n, err := reader.Read(buf)
-		if err == io.EOF {
-			break
-		}
-
-		send(socket.sockets[0], striping.NewSegment(buf, curPos))
-
-		curPos += n
-
-		// time.Sleep(20 * time.Millisecond)
-	}
-
-	eod := striping.NewHeader(0, 0, striping.BlockFlagEndOfData)
-	sendHeader(socket.sockets[0], eod)
-
-}
-
 func (socket *multisocket) Write(reader io.Reader) {
 
 	for _, s := range socket.sockets {
@@ -76,14 +47,12 @@ func (socket *multisocket) Write(reader io.Reader) {
 			break
 		}
 
-		socket.sc <- striping.NewSegment(buf, curPos)
+		socket.sc <- striping.NewSegment(buf[0:n], curPos)
 
 		curPos += n
 
 		// time.Sleep(20 * time.Millisecond)
 	}
-
-	time.Sleep(3 * time.Second)
 
 	for range socket.sockets {
 		socket.done <- true
@@ -112,7 +81,7 @@ func dispatcher(socket socket.DataSocket, sc chan *striping.Segment, done chan b
 			fmt.Println("Done")
 			return
 		case segment := <-sc:
-			// log.Debug("New Segment", "hdr", segment.Header)
+			log.Debug("New Segment", "hdr", segment.Header)
 			err := send(socket, segment)
 			if err != nil {
 				log.Error("Something bad happened", "err", err)
@@ -139,11 +108,21 @@ func send(socket socket.DataSocket, segment *striping.Segment) error {
 	}
 
 	if !segment.IsEODCount() {
-		reader := bytes.NewReader(segment.Data)
-		_, err := io.Copy(socket, reader)
-		if err != nil {
-			return fmt.Errorf("failed to write data: %s", err)
+		cur := 0
+		for {
+
+			n, err := socket.Write(segment.Data[cur:segment.ByteCount])
+			if err != nil {
+				return err
+			}
+
+			cur += n
+
+			if cur == int(segment.ByteCount) {
+				break
+			}
 		}
+
 	}
 
 	return nil
