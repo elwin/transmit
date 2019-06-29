@@ -29,6 +29,33 @@ func NewMultisocket(sockets []socket.DataSocket, maxLength int) *multisocket {
 	}
 }
 
+func (socket *multisocket) _Write(reader io.Reader) {
+	eodc := striping.NewEODCHeader(1)
+	sendHeader(socket.sockets[0], eodc)
+
+	curPos := 0
+
+	for {
+
+		buf := make([]byte, socket.maxLength)
+
+		n, err := reader.Read(buf)
+		if err == io.EOF {
+			break
+		}
+
+		send(socket.sockets[0], striping.NewSegment(buf, curPos))
+
+		curPos += n
+
+		// time.Sleep(20 * time.Millisecond)
+	}
+
+	eod := striping.NewHeader(0, 0, striping.BlockFlagEndOfData)
+	sendHeader(socket.sockets[0], eod)
+
+}
+
 func (socket *multisocket) Write(reader io.Reader) {
 
 	for _, s := range socket.sockets {
@@ -97,7 +124,7 @@ func dispatcher(socket socket.DataSocket, sc chan *striping.Segment, done chan b
 
 func sendHeader(socket socket.DataSocket, header *striping.Header) error {
 	err := binary.Write(socket, binary.BigEndian, header)
-	log.Debug("Wrote header", "hdr", header)
+	// log.Debug("Wrote header", "hdr", header)
 	if err != nil {
 		return fmt.Errorf("failed to write header: %s", err)
 	}

@@ -8,7 +8,6 @@ import (
 
 	"github.com/elwin/transmit/scion"
 	"github.com/elwin/transmit/striping"
-	"github.com/scionproto/scion/go/lib/log"
 )
 
 // Fix uint / int difference
@@ -72,7 +71,7 @@ func (transmission *transmission) ProcessBlock(conn io.Reader, i int) (finished 
 
 	finished = header.ContainsFlag(striping.BlockFlagEndOfData)
 
-	log.Debug(fmt.Sprintf("Received header (%d)", i), "hdr", *header)
+	// log.Debug(fmt.Sprintf("Received header (%d)", i), "hdr", *header)
 
 	// EOD header, contains no payload
 	if header.IsEODCount() {
@@ -84,11 +83,20 @@ func (transmission *transmission) ProcessBlock(conn io.Reader, i int) (finished 
 	}
 
 	data := make([]byte, header.ByteCount)
-	n, err := conn.Read(data)
-	if err != nil {
-		return false, fmt.Errorf("failed to read payload: %s", err)
+	cur := 0
+
+	// Read all bytes
+	for {
+		n, err := conn.Read(data[cur:header.ByteCount])
+		if err != nil {
+			return false, fmt.Errorf("failed to read payload: %s", err)
+		}
+
+		cur += n
+		if cur == int(header.ByteCount) {
+			break
+		}
 	}
-	n = n
 
 	// log.Debug(fmt.Sprintf("Read %d bytes (%d)", n, i))
 

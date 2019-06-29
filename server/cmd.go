@@ -1185,7 +1185,7 @@ func (cmd commandSpas) RequireAuth() bool {
 
 func (cmd commandSpas) Execute(conn *Conn, param string) {
 
-	ports := make([]int, 1)
+	ports := make([]int, 4)
 	for i := range ports {
 		ports[i] = rand.Intn(1000) + 40000
 	}
