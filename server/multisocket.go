@@ -7,18 +7,20 @@ import (
 	"io"
 	"time"
 
+	"github.com/elwin/transmit/socket"
+
 	"github.com/elwin/transmit/striping"
 	"github.com/scionproto/scion/go/lib/log"
 )
 
 type multisocket struct {
-	sockets   []DataSocket
+	sockets   []socket.DataSocket
 	maxLength int
 	sc        chan *striping.Segment
 	done      chan bool
 }
 
-func NewMultisocket(sockets []DataSocket, maxLength int) *multisocket {
+func NewMultisocket(sockets []socket.DataSocket, maxLength int) *multisocket {
 	return &multisocket{
 		sockets,
 		maxLength,
@@ -65,7 +67,7 @@ func (socket *multisocket) Write(reader io.Reader) {
 
 }
 
-func dispatcher(socket DataSocket, sc chan *striping.Segment, done chan bool) {
+func dispatcher(socket socket.DataSocket, sc chan *striping.Segment, done chan bool) {
 	defer func() {
 		eod := striping.NewHeader(0, 0, striping.BlockFlagEndOfData)
 		err := sendHeader(socket, eod)
@@ -93,7 +95,7 @@ func dispatcher(socket DataSocket, sc chan *striping.Segment, done chan bool) {
 	}
 }
 
-func sendHeader(socket DataSocket, header *striping.Header) error {
+func sendHeader(socket socket.DataSocket, header *striping.Header) error {
 	err := binary.Write(socket, binary.BigEndian, header)
 	log.Debug("Wrote header", "hdr", header)
 	if err != nil {
@@ -103,7 +105,7 @@ func sendHeader(socket DataSocket, header *striping.Header) error {
 	return nil
 }
 
-func send(socket DataSocket, segment *striping.Segment) error {
+func send(socket socket.DataSocket, segment *striping.Segment) error {
 	err := sendHeader(socket, segment.Header)
 	if err != nil {
 		return err

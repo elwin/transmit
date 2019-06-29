@@ -2,8 +2,8 @@ package mode
 
 // FTP modes
 const (
-	ModeStream            = 'S'
-	ModeExtendedBlockMode = 'E'
+	Stream            = 'S'
+	ExtendedBlockMode = 'E'
 )
 
 const (

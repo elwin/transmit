@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	socket2 "github.com/elwin/transmit/socket"
+
 	"github.com/elwin/transmit/mode"
 
 	ftp "github.com/elwin/transmit/client"
@@ -328,7 +330,7 @@ func (cmd commandEpsv) Execute(conn *Conn, param string) {
 
 	stream, _ := listener.Accept()
 
-	socket := ScionSocket{stream, port}
+	socket := socket2.NewScionSocket(stream, port)
 
 	conn.socket = socket
 }
@@ -1183,11 +1185,9 @@ func (cmd commandSpas) RequireAuth() bool {
 
 func (cmd commandSpas) Execute(conn *Conn, param string) {
 
-	ports := []int{
-		rand.Intn(1000) + 40000,
-		rand.Intn(1000) + 40000,
-		rand.Intn(1000) + 40000,
-		rand.Intn(1000) + 40000,
+	ports := make([]int, 1)
+	for i := range ports {
+		ports[i] = rand.Intn(1000) + 40000
 	}
 
 	var listeners []scion.Listener
@@ -1220,7 +1220,7 @@ func (cmd commandSpas) Execute(conn *Conn, param string) {
 			return
 		}
 
-		socket := ScionSocket{stream, ports[i]}
+		socket := socket2.NewScionSocket(stream, ports[i])
 		conn.parallelSockets = append(conn.parallelSockets, socket)
 	}
 

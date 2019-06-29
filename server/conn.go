@@ -19,6 +19,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/elwin/transmit/socket"
+
 	"github.com/elwin/transmit/scion"
 	"github.com/elwin/transmit/striping"
 	"github.com/scionproto/scion/go/lib/log"
@@ -32,8 +34,8 @@ type Conn struct {
 	conn            scion.Conn
 	controlReader   *bufio.Reader
 	controlWriter   *bufio.Writer
-	socket          DataSocket
-	parallelSockets []DataSocket
+	socket          socket.DataSocket
+	parallelSockets []socket.DataSocket
 	driver          Driver
 	auth            Auth
 	logger          Logger
@@ -255,7 +257,7 @@ func (conn *Conn) sendOutofBandDataWriter(data io.ReadCloser) error {
 	return nil
 }
 
-func (conn *Conn) sendDataOverSocket(data io.Reader, socket DataSocket) error {
+func (conn *Conn) sendDataOverSocket(data io.Reader, socket socket.DataSocket) error {
 
 	bytes, err := io.Copy(socket, data)
 
@@ -269,7 +271,7 @@ func (conn *Conn) sendDataOverSocket(data io.Reader, socket DataSocket) error {
 	return nil
 }
 
-func (conn *Conn) sendDataOverSocketN(data io.Reader, socket DataSocket, length int) error {
+func (conn *Conn) sendDataOverSocketN(data io.Reader, socket socket.DataSocket, length int) error {
 
 	bytes, err := io.CopyN(socket, data, int64(length))
 	if err != nil {
@@ -296,7 +298,7 @@ func (conn *Conn) sendData(reader io.Reader, n int) error {
 	segQueues := striping.DistributeSegments(segments, numSockets)
 
 	eodc := striping.NewEODCHeader(uint64(numSockets))
-	err = SendOverSocket(conn.parallelSockets[0], eodc)
+	err = conn.parallelSockets[0].SendHeader(eodc)
 
 	if err != nil {
 		return fmt.Errorf("failed to send EODC Header: %s", err)
@@ -315,7 +317,7 @@ func (conn *Conn) sendData(reader io.Reader, n int) error {
 			for !queue.Empty() {
 				segment := queue.Dequeue()
 
-				err := SendOverSocket(socket, segment.Header)
+				err := socket.SendHeader(segment.Header)
 				if err != nil {
 					log.Debug("Failed to write header", "err", err)
 				}
@@ -339,7 +341,8 @@ func (conn *Conn) sendData(reader io.Reader, n int) error {
 	// Send EOD
 	for i := range conn.parallelSockets {
 		eod := striping.NewHeader(0, 0, striping.BlockFlagEndOfData)
-		err := SendOverSocket(conn.parallelSockets[i], eod)
+		err = conn.parallelSockets[i].SendHeader(eod)
+
 		if err != nil {
 			return fmt.Errorf("failed to write EOD header: %s", err)
 		}

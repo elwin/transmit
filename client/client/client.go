@@ -28,7 +28,7 @@ func main() {
 		log.Error("Failed to authenticate", "err", err)
 	}
 
-	err = conn.Mode(mode.ModeExtendedBlockMode)
+	err = conn.Mode(mode.ExtendedBlockMode)
 	if err != nil {
 		log.Error("Could not switch mode", "err", err)
 	}
