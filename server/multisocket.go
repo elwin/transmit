@@ -23,6 +23,8 @@ func NewMultisocket(sockets []DataSocket, maxLength int) io.Writer {
 
 func (socket *multisocket) Write(p []byte) (n int, err error) {
 
+	fmt.Println(len(p))
+
 	sc := make(chan *striping.Segment)
 	done := make(chan bool)
 
