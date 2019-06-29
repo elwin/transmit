@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
+
 	"github.com/elwin/transmit/striping"
 	"github.com/scionproto/scion/go/lib/log"
-	"io"
 )
 
 var _ io.Writer = &multisocket{}
@@ -61,17 +62,20 @@ func (socket *multisocket) Write(p []byte) (n int, err error) {
 }
 
 func dispatcher(socket DataSocket, sc chan *striping.Segment, done chan bool) {
-	defer func() { done <- true }()
+	defer func() {
+		eod := striping.NewHeader(0, 0, striping.BlockFlagEndOfData)
+		err := sendHeader(socket, eod)
+		if err != nil {
+			log.Error("Something bad happened", "err", err)
+		}
+		done <- true
+
+	}()
+
 	for {
 
 		select {
 		case <-done:
-			log.Debug("Done")
-			eod := striping.NewHeader(0, 0, striping.BlockFlagEndOfData)
-			err := sendHeader(socket, eod)
-			if err != nil {
-				log.Error("Something bad happened", "err", err)
-			}
 			return
 		case segment := <-sc:
 			// log.Debug("New Segment", "hdr", segment.Header)
