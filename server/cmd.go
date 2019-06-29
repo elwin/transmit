@@ -6,13 +6,13 @@ package server
 
 import (
 	"fmt"
-	ftp "github.com/elwin/transmit/client"
-	"github.com/elwin/transmit/scion"
-	"io"
 	"log"
 	"math/rand"
 	"strconv"
 	"strings"
+
+	ftp "github.com/elwin/transmit/client"
+	"github.com/elwin/transmit/scion"
 )
 
 type Command interface {
@@ -706,9 +706,8 @@ func (cmd commandRetr) Execute(conn *Conn, param string) {
 
 			conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes on %d connections", bytes, len(conn.parallelSockets)))
 
-			writer := NewMultisocket(conn.parallelSockets, 100)
-			n, err := io.Copy(writer, data)
-			fmt.Println(n)
+			writer := NewMultisocket(conn.parallelSockets, 1000)
+			writer.Write(data)
 			fmt.Println(bytes)
 
 			if err != nil {

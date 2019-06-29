@@ -5,13 +5,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/elwin/transmit/scion"
-	"github.com/scionproto/scion/go/lib/snet"
 	"io"
 	"net/textproto"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/elwin/transmit/scion"
+	"github.com/scionproto/scion/go/lib/snet"
 )
 
 // Login authenticates the client with specified user and password.
@@ -443,16 +444,12 @@ func (server *ServerConn) Retr(path string) (Response, error) {
 			return nil, err
 		}
 
-		transmission := NewTransmission()
-
-		err = transmission.AcceptData(conns)
-		if err != nil {
-			return nil, err
-		}
+		rmsocket := NewReadMultisocket(conns)
+		data := rmsocket.Read()
 
 		// fmt.Println(string(transmission.getData()))
 
-		reader := bytes.NewReader(transmission.getData())
+		reader := bytes.NewReader(data)
 
 		return &MultiConnectionResponse{reader}, nil
 

@@ -5,62 +5,64 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/elwin/transmit/striping"
 	"github.com/scionproto/scion/go/lib/log"
 )
 
-var _ io.Writer = &multisocket{}
-
 type multisocket struct {
 	sockets   []DataSocket
 	maxLength int
+	sc        chan *striping.Segment
+	done      chan bool
 }
 
-func NewMultisocket(sockets []DataSocket, maxLength int) io.Writer {
-	return &multisocket{sockets, maxLength}
+func NewMultisocket(sockets []DataSocket, maxLength int) *multisocket {
+	return &multisocket{
+		sockets,
+		maxLength,
+		make(chan *striping.Segment),
+		make(chan bool),
+	}
 }
 
-func (socket *multisocket) Write(p []byte) (n int, err error) {
-
-	fmt.Println(len(p))
-
-	sc := make(chan *striping.Segment)
-	done := make(chan bool)
+func (socket *multisocket) Write(reader io.Reader) {
 
 	for _, s := range socket.sockets {
-		go dispatcher(s, sc, done)
+		go dispatcher(s, socket.sc, socket.done)
 	}
 
 	eodc := striping.NewEODCSegment(uint64(len(socket.sockets)))
-	sc <- eodc
+	socket.sc <- eodc
 
 	curPos := 0
 
 	for {
 
-		endPos := curPos + socket.maxLength
-		if endPos > len(p) {
-			endPos = len(p)
-		}
+		buf := make([]byte, socket.maxLength)
 
-		curData := p[curPos:endPos]
-
-		sc <- striping.NewSegment(curData, curPos)
-
-		curPos = endPos
-
-		if curPos >= len(p) {
+		n, err := reader.Read(buf)
+		if err == io.EOF {
 			break
 		}
+
+		socket.sc <- striping.NewSegment(buf, curPos)
+
+		curPos += n
+
+		// time.Sleep(20 * time.Millisecond)
 	}
+
+	time.Sleep(3 * time.Second)
 
 	for range socket.sockets {
-		done <- true
-		<-done
+		socket.done <- true
+		<-socket.done
 	}
 
-	return curPos, nil
+	return
+
 }
 
 func dispatcher(socket DataSocket, sc chan *striping.Segment, done chan bool) {
@@ -78,6 +80,7 @@ func dispatcher(socket DataSocket, sc chan *striping.Segment, done chan bool) {
 
 		select {
 		case <-done:
+			fmt.Println("Done")
 			return
 		case segment := <-sc:
 			// log.Debug("New Segment", "hdr", segment.Header)
@@ -92,6 +95,7 @@ func dispatcher(socket DataSocket, sc chan *striping.Segment, done chan bool) {
 
 func sendHeader(socket DataSocket, header *striping.Header) error {
 	err := binary.Write(socket, binary.BigEndian, header)
+	log.Debug("Wrote header", "hdr", header)
 	if err != nil {
 		return fmt.Errorf("failed to write header: %s", err)
 	}

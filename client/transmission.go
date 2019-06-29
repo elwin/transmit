@@ -3,11 +3,12 @@ package ftp
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
+	"sync"
+
 	"github.com/elwin/transmit/scion"
 	"github.com/elwin/transmit/striping"
 	"github.com/scionproto/scion/go/lib/log"
-	"io"
-	"sync"
 )
 
 // Fix uint / int difference
@@ -100,36 +101,6 @@ func (transmission *transmission) ProcessBlock(conn io.Reader, i int) (finished 
 }
 
 func (transmission *transmission) AcceptData(conns []scion.Conn) error {
-
-	wg := sync.WaitGroup{}
-
-	// i, conn := range conns
-	// ^ will lead to errors, don't know why
-	for i := range conns {
-
-		wg.Add(1)
-
-		go func(conn scion.Conn, i int) {
-
-			defer wg.Done()
-
-			for {
-				finished, err := transmission.ProcessBlock(conn, i)
-				if err != nil {
-					log.Error("failed to process block", "err", err)
-					return
-				}
-
-				if finished {
-					return
-				}
-			}
-
-		}(conns[i], i)
-
-	}
-
-	wg.Wait()
 
 	return nil
 }
