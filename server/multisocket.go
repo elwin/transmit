@@ -14,77 +14,70 @@ import (
 type multisocket struct {
 	sockets   []socket.DataSocket
 	maxLength int
-	sc        chan *striping.Segment
-	done      chan bool
 }
 
 func NewMultisocket(sockets []socket.DataSocket, maxLength int) *multisocket {
 	return &multisocket{
 		sockets,
 		maxLength,
-		make(chan *striping.Segment),
-		make(chan bool),
 	}
 }
 
-func (socket *multisocket) Write(reader io.Reader) {
+func (socket *multisocket) Write(reader io.Reader) (n int, err error) {
 
+	segmentChannel := make(chan *striping.Segment)
+	parent, child := NewCoordination(len(socket.sockets))
+
+	// Dispatch all sockets
 	for _, s := range socket.sockets {
-		go dispatcher(s, socket.sc, socket.done)
+		go writer(s, segmentChannel, child)
 	}
 
 	eodc := striping.NewEODCSegment(uint64(len(socket.sockets)))
-	socket.sc <- eodc
+	segmentChannel <- eodc
 
 	curPos := 0
 
 	for {
-
 		buf := make([]byte, socket.maxLength)
-
 		n, err := reader.Read(buf)
 		if err == io.EOF {
 			break
 		}
 
-		socket.sc <- striping.NewSegment(buf[0:n], curPos)
-
+		segmentChannel <- striping.NewSegment(buf[0:n], curPos)
 		curPos += n
-
-		// time.Sleep(20 * time.Millisecond)
 	}
 
-	for range socket.sockets {
-		socket.done <- true
-		<-socket.done
-	}
+	// Notify all channels to finish
+	// and wait for them
+	parent.Stop()
 
 	return
 
 }
 
-func dispatcher(socket socket.DataSocket, sc chan *striping.Segment, done chan bool) {
+func writer(socket socket.DataSocket, sc chan *striping.Segment, coord Child) {
 	defer func() {
 		eod := striping.NewHeader(0, 0, striping.BlockFlagEndOfData)
 		err := sendHeader(socket, eod)
 		if err != nil {
-			log.Error("Something bad happened", "err", err)
+			log.Error("Error while sending header", "err", err)
 		}
-		done <- true
-
+		coord.Done()
 	}()
 
 	for {
 
 		select {
-		case <-done:
-			fmt.Println("Done")
+		case <-coord.ShouldStop():
+			log.Debug("Done", "port", socket.Port())
 			return
 		case segment := <-sc:
-			log.Debug("New Segment", "hdr", segment.Header)
+			// log.Debug("New Segment", "hdr", segment.Header)
 			err := send(socket, segment)
 			if err != nil {
-				log.Error("Something bad happened", "err", err)
+				log.Error("Error while sending packet", "err", err)
 			}
 		}
 
@@ -126,4 +119,51 @@ func send(socket socket.DataSocket, segment *striping.Segment) error {
 	}
 
 	return nil
+}
+
+// --------------- Coordination -------------- //
+
+var _ Parent = &coordination{}
+var _ Child = &coordination{}
+
+type coordination struct {
+	n    int
+	stop chan struct{}
+	done chan struct{}
+}
+
+type Parent interface {
+	Stop()
+}
+
+type Child interface {
+	ShouldStop() chan struct{}
+	Done()
+}
+
+func NewCoordination(n int) (Parent, Child) {
+	c := &coordination{
+		n,
+		make(chan struct{}),
+		make(chan struct{}),
+	}
+	return Parent(c), Child(c)
+}
+
+func (c *coordination) Done() {
+	c.done <- struct{}{}
+}
+
+func (c *coordination) ShouldStop() chan struct{} {
+	return c.stop
+}
+
+func (c *coordination) Stop() {
+	for i := 0; i < c.n; i++ {
+		c.stop <- struct{}{}
+	}
+
+	for i := 0; i < c.n; i++ {
+		<-c.done
+	}
 }

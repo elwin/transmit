@@ -185,7 +185,7 @@ func (cmd commandFeat) Execute(conn *Conn, param string) {
 
 // cmdCdup responds to the CDUP FTP command.
 //
-// Allows the client change their current directory to the parent.
+// Allows the client change their current directory to the Parent.
 type commandCdup struct{}
 
 func (cmd commandCdup) IsExtend() bool {

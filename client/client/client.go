@@ -28,6 +28,11 @@ func main() {
 		log.Error("Failed to authenticate", "err", err)
 	}
 
+	entries, _ := conn.List("/")
+	for _, entry := range entries {
+		fmt.Println(entry.Name)
+	}
+
 	err = conn.Mode(mode.ExtendedBlockMode)
 	if err != nil {
 		log.Error("Could not switch mode", "err", err)
@@ -37,16 +42,17 @@ func main() {
 	if err != nil {
 		log.Error("Something failed", "err", err)
 	}
-	defer response.Close()
 
 	f, _ := os.Create("/home/elwin/ftp/result.txt")
 	_, err = io.Copy(f, response)
 
-	entries, _ := conn.List("/")
+	response.Close()
+
+	entries, err = conn.List("/")
+	if err != nil {
+		log.Error("List", "err", err)
+	}
 	for _, entry := range entries {
 		fmt.Println(entry.Name)
 	}
-
-	// Can't do commands after our retr
-	// neither list nor quit
 }
