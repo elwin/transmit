@@ -46,4 +46,7 @@ func main() {
 	for _, entry := range entries {
 		fmt.Println(entry.Name)
 	}
+
+	// Can't do commands after our retr
+	// neither list nor quit
 }
