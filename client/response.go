@@ -1,7 +1,7 @@
 package ftp
 
 import (
-	"github.com/elwin/transmit/scion"
+	"github.com/elwin/transmit/socket"
 	"io"
 	"time"
 )
@@ -16,7 +16,7 @@ var _ Response = &SingleConnectionResponse{}
 
 // Response represents a data-connection
 type SingleConnectionResponse struct {
-	conn   scion.Conn
+	conn   socket.DataSocket
 	c      *ServerConn
 	closed bool
 }
@@ -43,7 +43,8 @@ func (r *SingleConnectionResponse) Close() error {
 
 // SetDeadline sets the deadlines associated with the connection.
 func (r *SingleConnectionResponse) SetDeadline(t time.Time) error {
-	return r.conn.SetDeadline(t)
+	// return r.conn.SetDeadline(t)
+	return nil
 }
 
 var _ Response = &MultiConnectionResponse{}

@@ -14,13 +14,13 @@ type Conn interface {
 	// after a fixed time limit; see SetDeadline and SetReadDeadline.
 	Read(b []byte) (n int, err error)
 
-	// Write writes data to the connection.
-	// Write can be made to time out and return an Error with Timeout() == true
+	// ReadFrom writes data to the connection.
+	// ReadFrom can be made to time out and return an Error with Timeout() == true
 	// after a fixed time limit; see SetDeadline and SetWriteDeadline.
 	Write(b []byte) (n int, err error)
 
 	// Close closes the connection.
-	// Any blocked Read or Write operations will be unblocked and return errors.
+	// Any blocked Read or ReadFrom operations will be unblocked and return errors.
 	Close() error
 
 	// LocalAddr returns the Local network Local.
@@ -37,11 +37,11 @@ type Conn interface {
 	// fail with a timeout (see type Error) instead of
 	// blocking. The deadline applies to all future and pending
 	// I/O, not just the immediately following call to Read or
-	// Write. After a deadline has been exceeded, the connection
+	// ReadFrom. After a deadline has been exceeded, the connection
 	// can be refreshed by setting a deadline in the future.
 	//
 	// An idle timeout can be implemented by repeatedly extending
-	// the deadline after successful Read or Write calls.
+	// the deadline after successful Read or ReadFrom calls.
 	//
 	// A zero value for t means I/O operations will not time out.
 	SetDeadline(t time.Time) error
@@ -51,11 +51,11 @@ type Conn interface {
 	// A zero value for t means Read will not time out.
 	SetReadDeadline(t time.Time) error
 
-	// SetWriteDeadline sets the deadline for future Write calls
-	// and any currently-blocked Write call.
+	// SetWriteDeadline sets the deadline for future ReadFrom calls
+	// and any currently-blocked ReadFrom call.
 	// Even if write times out, it may return n > 0, indicating that
 	// some of the data was successfully written.
-	// A zero value for t means Write will not time out.
+	// A zero value for t means ReadFrom will not time out.
 	SetWriteDeadline(t time.Time) error
 }
 

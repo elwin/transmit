@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/elwin/transmit/socket"
 	"io"
 	"net/textproto"
 	"strconv"
@@ -228,7 +229,7 @@ func (server *ServerConn) getDataConns() ([]snet.Addr, error) {
 }
 
 // openDataConn creates a new FTP data connection.
-func (server *ServerConn) openDataConn() (scion.Conn, error) {
+func (server *ServerConn) openDataConn() (socket.DataSocket, error) {
 	addr, err := server.getDataConn()
 
 	if err != nil {
@@ -242,7 +243,7 @@ func (server *ServerConn) openDataConn() (scion.Conn, error) {
 
 	conn, err := scion.Dial(*laddr, *addr)
 
-	return conn, err
+	return socket.NewScionSocket(conn, 0), err
 }
 
 func (server *ServerConn) openDataConns() ([]scion.Conn, error) {
@@ -295,8 +296,8 @@ func (server *ServerConn) dispatchCmd(format string, args ...interface{}) error 
 
 // cmdDataConnFrom executes a command which require a FTP data connection.
 // Issues a REST FTP command to specify the number of bytes to skip for the transfer.
-func (server *ServerConn) cmdDataConnFrom(offset uint64, format string, args ...interface{}) (scion.Conn, error) {
-	conn, err := server.openDataConn()
+func (server *ServerConn) cmdDataConnFrom(offset uint64, format string, args ...interface{}) (socket.DataSocket, error) {
+	socket, err := server.openDataConn()
 	if err != nil {
 		return nil, err
 	}
@@ -304,28 +305,28 @@ func (server *ServerConn) cmdDataConnFrom(offset uint64, format string, args ...
 	if offset != 0 {
 		_, _, err := server.cmd(StatusRequestFilePending, "REST %d", offset)
 		if err != nil {
-			conn.Close()
+			socket.Close()
 			return nil, err
 		}
 	}
 
 	err = server.dispatchCmd(format, args...)
 	if err != nil {
-		conn.Close()
+		socket.Close()
 		return nil, err
 	}
 
 	code, msg, err := server.conn.ReadResponse(-1)
 	if err != nil {
-		conn.Close()
+		socket.Close()
 		return nil, err
 	}
 	if code != StatusAlreadyOpen && code != StatusAboutToSend {
-		conn.Close()
+		socket.Close()
 		return nil, &textproto.Error{Code: code, Msg: msg}
 	}
 
-	return conn, nil
+	return socket, nil
 }
 
 // NameList issues an NLST FTP command.
@@ -465,12 +466,12 @@ func (server *ServerConn) Retr(path string) (Response, error) {
 //
 // The returned ReadCloser must be closed to cleanup the FTP data connection.
 func (server *ServerConn) RetrFrom(path string, offset uint64) (Response, error) {
-	conn, err := server.cmdDataConnFrom(offset, "RETR %s", path)
+	socket, err := server.cmdDataConnFrom(offset, "RETR %s", path)
 	if err != nil {
 		return nil, err
 	}
 
-	return &SingleConnectionResponse{conn: conn, c: server}, nil
+	return &SingleConnectionResponse{conn: socket, c: server}, nil
 }
 
 // Stor issues a STOR FTP command to store a file to the remote FTP server.
@@ -630,7 +631,7 @@ func (server *ServerConn) spas() ([]snet.Addr, error) {
 func (server *ServerConn) Eret(path string, offset, length int) (Response, error) {
 
 	sockets, err := server.openDataConns()
-	socket := sockets[0]
+	socket := socket.NewScionSocket(sockets[0], 0)
 
 	if err != nil {
 		socket.Close()

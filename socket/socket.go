@@ -8,26 +8,17 @@ import (
 	"github.com/elwin/transmit/striping"
 )
 
-// DataSocket describes a data parallelSockets is used to send non-control data between the client and
+// DataSocket describes a data socket used to send non-control data between the client and
 // server.
 type DataSocket interface {
 	Host() string
-
 	Port() int
+	SendHeader(h *striping.Header) error // Remove this, not needed for multisocket
 
-	// the standard io.Reader interface
-	Read(p []byte) (n int, err error)
-
-	// the standard io.ReaderFrom interface
-	ReadFrom(r io.Reader) (int64, error)
-
-	// the standard io.Writer interface
-	Write(p []byte) (n int, err error)
-
-	// the standard io.Closer interface
-	Close() error
-
-	SendHeader(h *striping.Header) error
+	io.Reader
+	io.ReaderFrom
+	io.Writer
+	io.Closer
 }
 
 var _ DataSocket = &ScionSocket{}
@@ -37,12 +28,15 @@ type ScionSocket struct {
 	port int
 }
 
+func (socket *ScionSocket) WriteTo(w io.Writer) (n int64, err error) {
+	return io.Copy(w, socket.conn)
+}
+
 func NewScionSocket(conn scion.Conn, port int) *ScionSocket {
 	return &ScionSocket{conn, port}
 }
 
 func (socket *ScionSocket) Write(p []byte) (n int, err error) {
-
 	return socket.conn.Write(p)
 }
 

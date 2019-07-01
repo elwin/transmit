@@ -51,8 +51,8 @@ func (header *Header) AddFlag(flags ...uint8) {
 	}
 }
 
-func (header *Header) GetEODCount() uint64 {
-	return header.OffsetCount
+func (header *Header) GetEODCount() int {
+	return int(header.OffsetCount)
 }
 
 func (header *Header) IsEODCount() bool {

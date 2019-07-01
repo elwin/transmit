@@ -354,10 +354,10 @@ func (conn *Conn) sendData(reader io.Reader, n int) error {
 /*
 func (conn *Conn) transmitData(header striping.Header, parallelSockets DataSocket) {
 
-	binary.Write(parallelSockets, binary.BigEndian, header)
+	binary.ReadFrom(parallelSockets, binary.BigEndian, header)
 
 	data := []byte{1, 2, 3, 4, 5, 6, 7, 8}
-	parallelSockets.Write(data)
+	parallelSockets.ReadFrom(data)
 
 }*/
 

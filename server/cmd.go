@@ -711,8 +711,8 @@ func (cmd commandRetr) Execute(conn *Conn, param string) {
 
 			conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes on %d connections", bytes, len(conn.parallelSockets)))
 
-			writer := NewMultisocket(conn.parallelSockets, 1000)
-			writer.Write(data)
+			writer := socket2.NewMultisocket(conn.parallelSockets, 128)
+			writer.ReadFrom(data)
 			fmt.Println(bytes)
 
 			if err != nil {
