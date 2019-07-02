@@ -8,6 +8,9 @@ import (
 	"io"
 )
 
+// Currently only able to send data
+// WriteTo doesn't work correctly
+
 type multisocket struct {
 	sockets   []DataSocket
 	maxLength int

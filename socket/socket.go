@@ -13,7 +13,6 @@ import (
 type DataSocket interface {
 	Host() string
 	Port() int
-	SendHeader(h *striping.Header) error // Remove this, not needed for multisocket
 
 	io.Reader
 	io.ReaderFrom

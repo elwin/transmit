@@ -6,24 +6,19 @@ package server
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
+	"github.com/elwin/transmit/socket"
 	"io"
 	random "math/rand"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
-
-	"github.com/elwin/transmit/socket"
 
 	"github.com/elwin/transmit/scion"
-	"github.com/elwin/transmit/striping"
-	"github.com/scionproto/scion/go/lib/log"
 )
 
 const (
@@ -282,89 +277,4 @@ func (conn *Conn) sendDataOverSocketN(data io.Reader, socket socket.DataSocket, 
 	conn.writeMessage(200, message)
 
 	return nil
-}
-
-func (conn *Conn) sendData(reader io.Reader, n int) error {
-
-	data := make([]byte, n)
-	_, err := reader.Read(data)
-	if err != nil {
-		return fmt.Errorf("failed to read data: %s", err)
-	}
-
-	numSockets := len(conn.parallelSockets)
-
-	segments := striping.PartitionData(data, 200)
-	segQueues := striping.DistributeSegments(segments, numSockets)
-
-	eodc := striping.NewEODCHeader(uint64(numSockets))
-	err = conn.parallelSockets[0].SendHeader(eodc)
-
-	if err != nil {
-		return fmt.Errorf("failed to send EODC Header: %s", err)
-	}
-
-	var wg sync.WaitGroup
-
-	for i := range segQueues {
-		wg.Add(1)
-
-		go func(queue striping.SegmentQueue, i int) {
-			defer wg.Done()
-
-			socket := conn.parallelSockets[i]
-
-			for !queue.Empty() {
-				segment := queue.Dequeue()
-
-				err := socket.SendHeader(segment.Header)
-				if err != nil {
-					log.Debug("Failed to write header", "err", err)
-				}
-
-				reader := bytes.NewReader(segment.Data)
-				n, err := io.Copy(socket, reader)
-
-				if err != nil {
-					log.Debug("Failed to copy data", "err", err)
-				}
-
-				n = n
-				// message := "Successfully sent " + strconv.Itoa(int(n)) + " bytes"
-				// conn.writeMessage(200, message)
-			}
-		}(segQueues[i], i)
-	}
-
-	wg.Wait()
-
-	// Send EOD
-	for i := range conn.parallelSockets {
-		eod := striping.NewHeader(0, 0, striping.BlockFlagEndOfData)
-		err = conn.parallelSockets[i].SendHeader(eod)
-
-		if err != nil {
-			return fmt.Errorf("failed to write EOD header: %s", err)
-		}
-	}
-
-	return nil
-}
-
-/*
-func (conn *Conn) transmitData(header striping.Header, parallelSockets DataSocket) {
-
-	binary.ReadFrom(parallelSockets, binary.BigEndian, header)
-
-	data := []byte{1, 2, 3, 4, 5, 6, 7, 8}
-	parallelSockets.ReadFrom(data)
-
-}*/
-
-func list(max int) []byte {
-	result := make([]byte, max)
-	for i := range result {
-		result[i] = byte(i)
-	}
-	return result
 }

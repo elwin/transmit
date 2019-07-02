@@ -77,7 +77,7 @@ func (transmission *transmission) ProcessBlock(conn io.Reader, i int) (finished 
 	// EOD header, contains no payload
 	if header.IsEODCount() {
 		transmission.synchronized(func() {
-			transmission.eodTotal = header.GetEODCount()
+			transmission.eodTotal = uint64(header.GetEODCount())
 		})
 
 		return finished, nil

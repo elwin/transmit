@@ -448,8 +448,6 @@ func (server *ServerConn) Retr(path string) (Response, error) {
 		rmsocket := NewReadMultisocket(conns)
 		data := rmsocket.Read()
 
-		// fmt.Println(string(transmission.getData()))
-
 		reader := bytes.NewReader(data)
 
 		return &MultiConnectionResponse{reader}, nil

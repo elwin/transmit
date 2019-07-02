@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/elwin/transmit/mode"
 	"io"
 	"os"
 	"time"
@@ -32,12 +33,10 @@ func main() {
 		fmt.Println(entry.Name)
 	}
 
-	/*
-		err = conn.Mode(mode.ExtendedBlockMode)
-		if err != nil {
-			log.Error("Could not switch mode", "err", err)
-		}
-	*/
+	err = conn.Mode(mode.ExtendedBlockMode)
+	if err != nil {
+		log.Error("Could not switch mode", "err", err)
+	}
 
 	response, err := conn.Retr("yolo.txt")
 	if err != nil {
