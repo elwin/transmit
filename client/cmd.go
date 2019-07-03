@@ -2,7 +2,6 @@ package ftp
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/elwin/transmit/socket"
@@ -445,12 +444,14 @@ func (server *ServerConn) Retr(path string) (Response, error) {
 			return nil, err
 		}
 
-		rmsocket := NewReadMultisocket(conns)
-		data := rmsocket.Read()
+		socks := make([]socket.DataSocket, len(conns))
+		for i := range conns {
+			socks[i] = socket.NewScionSocket(conns[i], i)
+		}
 
-		reader := bytes.NewReader(data)
+		sock := socket.NewReadsocket(socks)
 
-		return &MultiConnectionResponse{reader}, nil
+		return &MultiConnectionResponse{sock}, nil
 
 	} else {
 

@@ -24,6 +24,10 @@ func (q *SegmentQueue) Pop() *Segment {
 	return q.Internal.Pop().(*Segment)
 }
 
+func (q *SegmentQueue) Peek() *Segment {
+	return q.Internal.Peek().(*Segment)
+}
+
 func (q *SegmentQueue) Len() int {
 	return q.Internal.Len()
 }
