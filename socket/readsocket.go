@@ -24,15 +24,12 @@ func (s *readsocket) Read(p []byte) (n int, err error) {
 	}
 
 	for s.queue.Len() == 0 ||
-		s.queue.Peek().OffsetCount < s.written {
+		s.queue.Peek().OffsetCount > s.written {
 		// Loop and wait until at least one available element is here
 	}
 
 	next := s.queue.Pop()
 	s.written += next.ByteCount
-
-	if len(p) < len(next.Data) {
-	}
 
 	return copy(p, next.Data), nil
 }
