@@ -9,8 +9,6 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/elwin/transmit/striping"
-
 	"github.com/elwin/transmit/socket"
 )
 
@@ -21,10 +19,6 @@ type ftpActiveSocket struct {
 	host   string
 	port   int
 	logger Logger
-}
-
-func (socket *ftpActiveSocket) SendHeader(h *striping.Header) error {
-	panic("implement me")
 }
 
 func newActiveSocket(remote string, port int, logger Logger, sessionID string) (socket.DataSocket, error) {
