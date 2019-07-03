@@ -1,11 +1,9 @@
 package socket
 
 import (
-	"encoding/binary"
 	"io"
 
 	"github.com/elwin/transmit/scion"
-	"github.com/elwin/transmit/striping"
 )
 
 // DataSocket describes a data socket used to send non-control data between the client and
@@ -59,8 +57,4 @@ func (socket *ScionSocket) ReadFrom(r io.Reader) (int64, error) {
 func (socket *ScionSocket) Port() int {
 
 	return socket.port
-}
-
-func (socket *ScionSocket) SendHeader(h *striping.Header) error {
-	return binary.Write(socket, binary.BigEndian, h)
 }

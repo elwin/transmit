@@ -8,17 +8,31 @@ import (
 	"io"
 )
 
-type readsocket struct {
-	sockets  []DataSocket
-	queue    *striping.SegmentQueue
-	written  uint64
-	eodc     int
-	finished int
+type ReaderSocket struct {
+	sockets   []DataSocket
+	queue     *striping.SegmentQueue
+	written   uint64
+	eodc      int
+	finished  int
+	listening bool
 }
 
-var _ io.Reader = &readsocket{}
+var _ io.Reader = &ReaderSocket{}
 
-func (s *readsocket) Read(p []byte) (n int, err error) {
+func NewReadsocket(sockets []DataSocket) *ReaderSocket {
+	return &ReaderSocket{
+		sockets: sockets,
+		queue:   striping.NewSegmentQueue(),
+		eodc:    -1,
+	}
+}
+
+func (s *ReaderSocket) Read(p []byte) (n int, err error) {
+	if !s.listening {
+		go s.streamListener()
+		s.listening = true
+	}
+
 	if s.finished == s.eodc && s.queue.Len() == 0 {
 		return 0, io.EOF
 	}
@@ -34,27 +48,13 @@ func (s *readsocket) Read(p []byte) (n int, err error) {
 	return copy(p, next.Data), nil
 }
 
-func NewReadsocket(sockets []DataSocket) *readsocket {
-	s := &readsocket{
-		sockets,
-		striping.NewSegmentQueue(),
-		0,
-		-1,
-		0,
-	}
-
-	go s.writeToQueue()
-
-	return s
-}
-
-func (s *readsocket) writeToQueue() {
+func (s *ReaderSocket) streamListener() {
 
 	segmentChannel := make(chan *striping.Segment)
 	done := make(chan struct{})
 
 	for _, s := range s.sockets {
-		go reader(s, segmentChannel, done)
+		go streamReader(s, segmentChannel, done)
 	}
 
 	for {
@@ -79,7 +79,7 @@ func (s *readsocket) writeToQueue() {
 
 }
 
-func reader(socket DataSocket, sc chan *striping.Segment, done chan struct{}) {
+func streamReader(socket DataSocket, sc chan *striping.Segment, done chan struct{}) {
 	defer func() {
 		done <- struct{}{}
 	}()
