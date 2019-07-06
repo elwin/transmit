@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/elwin/transmit/mode"
-	"strings"
+	"os"
 	"time"
 
 	"github.com/elwin/transmit/client"
@@ -37,7 +37,9 @@ func main() {
 		log.Error("Could not switch mode", "err", err)
 	}
 
-	err = conn.Stor("stor.txt", strings.NewReader("Hello World\n"))
+	f, _ := os.Open("/home/elwin/ftp/yolo.txt")
+
+	err = conn.Stor("stor.txt", f)
 	if err != nil {
 		log.Error("Something happened when wiriting", "err", err)
 	}

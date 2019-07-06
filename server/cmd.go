@@ -1050,7 +1050,17 @@ func (cmd commandStor) Execute(conn *Conn, param string) {
 		conn.appendData = false
 	}()
 
-	bytes, err := conn.driver.PutFile(targetPath, conn.socket, conn.appendData)
+	var bytes int64
+	var err error
+
+	if conn.extendedMode {
+		fmt.Println("Extended mode")
+		ms := socket2.NewReadsocket(conn.parallelSockets)
+		bytes, err = conn.driver.PutFile(targetPath, ms, conn.appendData)
+	} else {
+		bytes, err = conn.driver.PutFile(targetPath, conn.socket, conn.appendData)
+	}
+
 	if err == nil {
 		msg := "OK, received " + strconv.Itoa(int(bytes)) + " bytes"
 		conn.writeMessage(226, msg)
