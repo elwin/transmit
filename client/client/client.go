@@ -46,7 +46,7 @@ func main() {
 	f, _ := os.Create("/home/elwin/ftp/result.txt")
 	_, err = io.Copy(f, response)
 
-	response.Close()
+	// response.Close()
 
 	entries, err = conn.List("/")
 	if err != nil {

@@ -20,6 +20,7 @@ type WriterSocket struct {
 
 var _ io.ReaderFrom = &WriterSocket{}
 var _ io.Writer = &WriterSocket{}
+var _ io.Closer = &WriterSocket{}
 
 func NewWriterSocket(sockets []DataSocket, maxLength int) *WriterSocket {
 	parent, child := NewCoordination(len(sockets))
@@ -146,6 +147,13 @@ func send(socket DataSocket, segment *striping.Segment) error {
 
 	}
 
+	return nil
+}
+
+func (s *WriterSocket) Close() error {
+	// TODO
+	// First Flush / Block Channels
+	// Then send closing message
 	return nil
 }
 

@@ -296,36 +296,57 @@ func (server *ServerConn) dispatchCmd(format string, args ...interface{}) error 
 // cmdDataConnFrom executes a command which require a FTP data connection.
 // Issues a REST FTP command to specify the number of bytes to skip for the transfer.
 func (server *ServerConn) cmdDataConnFrom(offset uint64, format string, args ...interface{}) (socket.DataSocket, error) {
-	socket, err := server.openDataConn()
-	if err != nil {
-		return nil, err
+
+	var sock socket.DataSocket
+	var err error
+
+	if server.extendedMode {
+
+		conns, err := server.openDataConns()
+		if err != nil {
+			return nil, err
+		}
+
+		socks := make([]socket.DataSocket, len(conns))
+		for i := range conns {
+			socks[i] = socket.NewScionSocket(conns[i], i)
+		}
+
+		sock = socket.NewMultiSocket(socks)
+
+	} else {
+
+		sock, err = server.openDataConn()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if offset != 0 {
 		_, _, err := server.cmd(StatusRequestFilePending, "REST %d", offset)
 		if err != nil {
-			socket.Close()
+			sock.Close()
 			return nil, err
 		}
 	}
 
 	err = server.dispatchCmd(format, args...)
 	if err != nil {
-		socket.Close()
+		sock.Close()
 		return nil, err
 	}
 
 	code, msg, err := server.conn.ReadResponse(-1)
 	if err != nil {
-		socket.Close()
+		sock.Close()
 		return nil, err
 	}
 	if code != StatusAlreadyOpen && code != StatusAboutToSend {
-		socket.Close()
+		sock.Close()
 		return nil, &textproto.Error{Code: code, Msg: msg}
 	}
 
-	return socket, nil
+	return sock, nil
 }
 
 // NameList issues an NLST FTP command.
@@ -432,32 +453,33 @@ func (server *ServerConn) FileSize(path string) (int64, error) {
 // The returned ReadCloser must be closed to cleanup the FTP data connection.
 func (server *ServerConn) Retr(path string) (Response, error) {
 
-	if server.extendedMode {
+	/*
+		if server.extendedMode {
 
-		conns, err := server.openDataConns()
-		if err != nil {
-			return nil, err
-		}
+			conns, err := server.openDataConns()
+			if err != nil {
+				return nil, err
+			}
 
-		err = server.dispatchCmd("RETR %s", path)
-		if err != nil {
-			return nil, err
-		}
+			err = server.dispatchCmd("RETR %s", path)
+			if err != nil {
+				return nil, err
+			}
 
-		socks := make([]socket.DataSocket, len(conns))
-		for i := range conns {
-			socks[i] = socket.NewScionSocket(conns[i], i)
-		}
+			socks := make([]socket.DataSocket, len(conns))
+			for i := range conns {
+				socks[i] = socket.NewScionSocket(conns[i], i)
+			}
 
-		sock := socket.NewReadsocket(socks)
+			sock := socket.NewReadsocket(socks)
 
-		return &MultiConnectionResponse{sock}, nil
+			return &MultiConnectionResponse{sock}, nil
 
-	} else {
+		} else {*/
 
-		return server.RetrFrom(path, 0)
+	return server.RetrFrom(path, 0)
 
-	}
+	/*}*/
 }
 
 // RetrFrom issues a RETR FTP command to fetch the specified file from the remote
@@ -470,6 +492,7 @@ func (server *ServerConn) RetrFrom(path string, offset uint64) (Response, error)
 		return nil, err
 	}
 
+	// TODO: Issues with closing our new channel
 	return &SingleConnectionResponse{conn: socket, c: server}, nil
 }
 

@@ -53,6 +53,9 @@ type MultiConnectionResponse struct {
 	io.Reader
 }
 
+// Unlike the single data connection the multi data connections
+// can be kept for multiple transfers. Closing happens over the
+// channels themselves instead of over the control connection
 func (MultiConnectionResponse) Close() error {
 	return nil
 }

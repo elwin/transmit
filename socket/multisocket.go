@@ -8,16 +8,26 @@ type Socket interface {
 	io.Closer
 }
 
-type MutliSocket struct {
-	io.Reader
-	io.WriteCloser
+type MultiSocket struct {
+	*ReaderSocket
+	*WriterSocket
 }
 
-/*
-func NewMultiSocket(sockets []DataSocket) *MutliSocket {
-	return &MutliSocket{
+var _ DataSocket = MultiSocket{}
+
+func (MultiSocket) Host() string {
+	return "my host"
+}
+
+func (MultiSocket) Port() int {
+	return 69
+}
+
+var _ DataSocket = &MultiSocket{}
+
+func NewMultiSocket(sockets []DataSocket) *MultiSocket {
+	return &MultiSocket{
 		NewReadsocket(sockets),
-		NewWriterSocket(sockets),
+		NewWriterSocket(sockets, 1000),
 	}
 }
-*/
