@@ -1054,6 +1054,11 @@ func (cmd commandStor) Execute(conn *Conn, param string) {
 	var err error
 
 	if conn.extendedMode {
+
+		// TODO
+		// 1. Combine MutliReader & MultiWriter (=> MultiSocket)
+		// 2. conn.parallelSockets should be MultiSocket
+
 		fmt.Println("Extended mode")
 		ms := socket2.NewReadsocket(conn.parallelSockets)
 		bytes, err = conn.driver.PutFile(targetPath, ms, conn.appendData)
