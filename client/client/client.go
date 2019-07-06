@@ -3,8 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/elwin/transmit/mode"
-	"io"
-	"os"
+	"strings"
 	"time"
 
 	"github.com/elwin/transmit/client"
@@ -38,15 +37,23 @@ func main() {
 		log.Error("Could not switch mode", "err", err)
 	}
 
-	response, err := conn.Retr("yolo.txt")
+	err = conn.Stor("stor.txt", strings.NewReader("Hello World\n"))
 	if err != nil {
-		log.Error("Something failed", "err", err)
+		log.Error("Something happened when wiriting", "err", err)
 	}
 
-	f, _ := os.Create("/home/elwin/ftp/result.txt")
-	_, err = io.Copy(f, response)
+	/*
+		response, err := conn.Retr("yolo.txt")
+		if err != nil {
+			log.Error("Something failed", "err", err)
+		}
 
-	// response.Close()
+		f, _ := os.Create("/home/elwin/ftp/result.txt")
+		_, err = io.Copy(f, response)
+		// response.Close()
+
+
+	*/
 
 	entries, err = conn.List("/")
 	if err != nil {
