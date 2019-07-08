@@ -2,7 +2,6 @@ package ftp
 
 import (
 	"github.com/elwin/transmit/socket"
-	"github.com/scionproto/scion/go/lib/log"
 	"io"
 	"time"
 )
@@ -35,12 +34,10 @@ func (r *SingleConnectionResponse) Close() error {
 		return nil
 	}
 	err := r.conn.Close()
-	_, msg, err2 := r.c.conn.ReadResponse(StatusClosingDataConnection)
+	_, _, err2 := r.c.conn.ReadResponse(StatusClosingDataConnection)
 	if err2 != nil {
 		err = err2
 	}
-
-	log.Debug("Received msg", "msg", msg)
 
 	r.closed = true
 	return err

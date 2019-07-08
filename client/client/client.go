@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/elwin/transmit/mode"
 	"io"
 	"os"
@@ -27,19 +28,17 @@ func main() {
 		log.Error("Failed to authenticate", "err", err)
 	}
 
-	/*
-		entries, _ := conn.List("/")
-		for _, entry := range entries {
-			fmt.Println(entry.Name)
-		}
-	*/
+	entries, _ := conn.List("/")
+	for _, entry := range entries {
+		fmt.Println(entry.Name)
+	}
 
 	err = conn.Mode(mode.ExtendedBlockMode)
 	if err != nil {
 		log.Error("Could not switch mode", "err", err)
 	}
 
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 4; i++ {
 
 		response, err := conn.Retr("a.txt")
 		if err != nil {
@@ -53,15 +52,14 @@ func main() {
 
 	// Send file back
 
-	/*
-		f, _ = os.Open("/home/elwin/ftp/b.txt")
+	conn.ChangeDir("sub")
 
-		err = conn.Stor("c.txt", f)
-		if err != nil {
-			log.Error("Something happened when writing", "err", err)
-		}
+	f, _ := os.Open("/home/elwin/ftp/b.txt")
 
-	*/
+	err = conn.Stor("a.txt", f)
+	if err != nil {
+		log.Error("Something happened when writing", "err", err)
+	}
 
 	/*
 		entries, err = conn.List("/")
@@ -73,4 +71,5 @@ func main() {
 		}
 
 	*/
+
 }
