@@ -258,7 +258,7 @@ func (conn *Conn) sendDataOverSocket(data io.Reader, socket socket.DataSocket) e
 	}
 
 	message := "Successfully sent " + strconv.Itoa(int(bytes)) + " bytes"
-	conn.writeMessage(200, message)
+	conn.logger.Print(conn.sessionID, message)
 
 	return nil
 }

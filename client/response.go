@@ -2,6 +2,7 @@ package ftp
 
 import (
 	"github.com/elwin/transmit/socket"
+	"github.com/scionproto/scion/go/lib/log"
 	"io"
 	"time"
 )
@@ -29,14 +30,18 @@ func (r *SingleConnectionResponse) Read(buf []byte) (int, error) {
 // Close implements the io.Closer interface on a FTP data connection.
 // After the first call, Close will do nothing and return nil.
 func (r *SingleConnectionResponse) Close() error {
+
 	if r.closed {
 		return nil
 	}
 	err := r.conn.Close()
-	_, _, err2 := r.c.conn.ReadResponse(StatusClosingDataConnection)
+	_, msg, err2 := r.c.conn.ReadResponse(StatusClosingDataConnection)
 	if err2 != nil {
 		err = err2
 	}
+
+	log.Debug("Received msg", "msg", msg)
+
 	r.closed = true
 	return err
 }
