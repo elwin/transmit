@@ -41,6 +41,14 @@ func NewEODCHeader(eodCount uint64, flags ...uint8) *Header {
 		append(flags, BlockFlagEndOfDataCount)...)
 }
 
+func NewClosingHeader() *Header {
+	return NewHeader(
+		0,
+		0,
+		BlockFlagSenderClosesConnection,
+	)
+}
+
 func (header *Header) ContainsFlag(flag uint8) bool {
 	return header.Descriptor&flag == flag
 }
@@ -57,4 +65,8 @@ func (header *Header) GetEODCount() int {
 
 func (header *Header) IsEODCount() bool {
 	return header.ContainsFlag(BlockFlagEndOfDataCount)
+}
+
+func (header *Header) IsClosingConnection() bool {
+	return header.ContainsFlag(BlockFlagSenderClosesConnection)
 }

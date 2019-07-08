@@ -239,15 +239,12 @@ func (conn *Conn) sendOutofbandData(data []byte) {
 func (conn *Conn) sendOutofBandDataWriter(data io.ReadCloser) error {
 	conn.lastFilePos = 0
 
-	err := conn.sendDataOverSocket(data, conn.socket)
+	err := conn.sendDataOverSocket(data, conn.getActiveSocket())
 	if err != nil {
 		return err
 	}
 
-	message := "Closing data connection"
-	conn.writeMessage(226, message)
-	conn.socket.Close()
-	conn.socket = nil
+	conn.closeActiveSocket()
 
 	return nil
 }
@@ -277,4 +274,29 @@ func (conn *Conn) sendDataOverSocketN(data io.Reader, socket socket.DataSocket, 
 	conn.writeMessage(200, message)
 
 	return nil
+}
+
+func (conn *Conn) getActiveSocket() socket.DataSocket {
+
+	if conn.extendedMode {
+		return conn.parallelSockets
+	} else {
+		return conn.socket
+	}
+
+}
+
+func (conn *Conn) closeActiveSocket() {
+
+	message := "Closing data connection"
+	conn.writeMessage(226, message)
+
+	if conn.extendedMode {
+		conn.parallelSockets.Close()
+		conn.parallelSockets = nil
+	} else {
+		conn.socket.Close()
+		conn.socket = nil
+	}
+
 }

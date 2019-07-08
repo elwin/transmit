@@ -6,12 +6,11 @@ package server
 
 import (
 	"fmt"
+	socket2 "github.com/elwin/transmit/socket"
 	"log"
 	"math/rand"
 	"strconv"
 	"strings"
-
-	socket2 "github.com/elwin/transmit/socket"
 
 	"github.com/elwin/transmit/mode"
 
@@ -707,25 +706,14 @@ func (cmd commandRetr) Execute(conn *Conn, param string) {
 	if err == nil {
 		defer data.Close()
 
-		if conn.extendedMode {
+		conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes", bytes))
 
-			conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes on ports %d", bytes, conn.parallelSockets.Port()))
+		err = conn.sendOutofBandDataWriter(data)
 
-			bytes, err := conn.parallelSockets.ReadFrom(data)
-			fmt.Println(bytes)
-
-			if err != nil {
-				conn.writeMessage(551, "Error reading file")
-			}
-
-		} else {
-			conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes", bytes))
-			err = conn.sendOutofBandDataWriter(data)
-
-			if err != nil {
-				conn.writeMessage(551, "Error reading file")
-			}
+		if err != nil {
+			conn.writeMessage(551, "Error reading file")
 		}
+
 	} else {
 		conn.writeMessage(551, "File not available")
 	}

@@ -68,6 +68,10 @@ func (s *ReaderSocket) streamListener() {
 				s.queue.Push(segment)
 			}
 
+			if segment.IsClosingConnection() {
+				log.Debug("Closing conn!")
+			}
+
 		case <-done:
 			s.finished += 1
 			if s.finished == s.eodc {

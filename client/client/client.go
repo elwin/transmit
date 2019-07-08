@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/elwin/transmit/mode"
+	"io"
 	"os"
 	"time"
 
@@ -32,36 +32,37 @@ func main() {
 		fmt.Println(entry.Name)
 	}
 
-	err = conn.Mode(mode.ExtendedBlockMode)
+	// err = conn.Mode(mode.ExtendedBlockMode)
 	if err != nil {
 		log.Error("Could not switch mode", "err", err)
 	}
 
-	f, _ := os.Open("/home/elwin/ftp/yolo.txt")
-
-	err = conn.Stor("stor.txt", f)
+	response, err := conn.Retr("a.txt")
 	if err != nil {
-		log.Error("Something happened when wiriting", "err", err)
+		log.Error("Something failed", "err", err)
+	}
+
+	f, _ := os.Create("/home/elwin/ftp/b.txt")
+	_, err = io.Copy(f, response)
+	response.Close()
+
+	// Send file back
+
+	f, _ = os.Open("/home/elwin/ftp/b.txt")
+
+	err = conn.Stor("c.txt", f)
+	if err != nil {
+		log.Error("Something happened when writing", "err", err)
 	}
 
 	/*
-		response, err := conn.Retr("yolo.txt")
+		entries, err = conn.List("/")
 		if err != nil {
-			log.Error("Something failed", "err", err)
+			log.Error("List", "err", err)
+		}
+		for _, entry := range entries {
+			fmt.Println(entry.Name)
 		}
 
-		f, _ := os.Create("/home/elwin/ftp/result.txt")
-		_, err = io.Copy(f, response)
-		// response.Close()
-
-
 	*/
-
-	entries, err = conn.List("/")
-	if err != nil {
-		log.Error("List", "err", err)
-	}
-	for _, entry := range entries {
-		fmt.Println(entry.Name)
-	}
 }
