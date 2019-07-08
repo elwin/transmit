@@ -317,15 +317,14 @@ func (cmd commandEpsv) Execute(conn *Conn, param string) {
 
 	listener, err := scion.Listen(address)
 
-	// Somehow connection doesnt get accepted (stream or something
+	// Somehow connection doesnt get accepted (stream or something)
 	if err != nil {
 		log.Println(err)
 		conn.writeMessage(425, "Data connection failed")
 		return
 	}
 
-	msg := fmt.Sprintf("Entering Extended Passive Mode (|||%d|)", port)
-	conn.writeMessage(229, msg)
+	conn.writeMessage(229, fmt.Sprintf("Entering Extended Passive Mode (|||%d|)", port))
 
 	stream, _ := listener.Accept()
 
@@ -1155,8 +1154,14 @@ func (cmd commandUser) Execute(conn *Conn, param string) {
 	}
 }
 
-// Extension
+// GridFTP Extensions (https://www.ogf.org/documents/GFD.20.pdf)
 
+// Striped Passive
+//
+// This command is analogous to the PASV command, but allows an array of
+// host/port connections to be returned. This enables STRIPING, that is,
+// multiple network endpoints (multi-homed hosts, or multiple hosts) to
+// participate in the transfer.
 type commandSpas struct{}
 
 func (cmd commandSpas) IsExtend() bool {
@@ -1188,7 +1193,6 @@ func (cmd commandSpas) Execute(conn *Conn, param string) {
 
 		listener, err := scion.Listen(address)
 		if err != nil {
-			log.Println(err)
 			conn.writeMessage(425, "Data connection failed")
 			return
 		}
@@ -1205,8 +1209,7 @@ func (cmd commandSpas) Execute(conn *Conn, param string) {
 	for i, listener := range listeners {
 		stream, err := listener.Accept()
 		if err != nil {
-			log.Println(err)
-			conn.writeMessage(400, "Some error or Data connection failed")
+			conn.writeMessage(400, "Data connection failed")
 			return
 		}
 
@@ -1231,7 +1234,7 @@ func (commandEret) RequireAuth() bool {
 	return true
 }
 
-// Did not handle conn.lastFilePos yet
+// TODO: Handle conn.lastFilePos yet
 func (commandEret) Execute(conn *Conn, param string) {
 
 	params := strings.Split(param, " ")

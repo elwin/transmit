@@ -69,20 +69,20 @@ func (s *ReaderSocket) streamListener() {
 			}
 
 			if segment.IsClosingConnection() {
+				// TODO
+				// Is never triggered
 				log.Debug("Closing conn!")
 			}
 
 		case <-done:
 			s.finished += 1
 			if s.finished == s.eodc {
-				fmt.Println("Finished")
 				return
 			}
 		}
 	}
 
 }
-
 func streamReader(socket DataSocket, sc chan *striping.Segment, done chan struct{}) {
 	defer func() {
 		done <- struct{}{}
