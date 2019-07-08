@@ -3,7 +3,6 @@ package scion
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/scionproto/scion/go/lib/log"
 	"github.com/scionproto/scion/go/lib/sciond"
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/snet/squic"
@@ -65,7 +64,7 @@ func sendHandshake(rw io.ReadWriter) error {
 
 	binary.Write(rw, binary.BigEndian, msg)
 
-	log.Debug("Sent handshake", "msg", msg)
+	// log.Debug("Sent handshake", "msg", msg)
 
 	return nil
 }

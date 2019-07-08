@@ -2,7 +2,6 @@ package scion
 
 import (
 	"fmt"
-	"github.com/scionproto/scion/go/lib/log"
 	"github.com/scionproto/scion/go/lib/sciond"
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/snet/squic"
@@ -32,7 +31,7 @@ func Listen(address string) (Listener, error) {
 
 	listener, err := squic.ListenSCION(nil, addr, nil)
 	if err != nil {
-		log.Error("Unable to listen", "err", err)
+		return nil, fmt.Errorf("unable to listen: %s", err)
 	}
 
 	return &ScionListener{

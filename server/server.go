@@ -253,11 +253,7 @@ func (server *Server) Serve(l scion.Listener) error {
 	sessionID := ""
 	for {
 
-		fmt.Println("Waiting for connection")
-
 		conn, err := server.listener.Accept()
-
-		fmt.Println("Accepted connection")
 
 		if err != nil {
 			select {
@@ -265,7 +261,7 @@ func (server *Server) Serve(l scion.Listener) error {
 				return ErrServerClosed
 			default:
 			}
-			server.logger.Printf(sessionID, "listening error: %v", err)
+			server.logger.Printf(sessionID, "Listening error: %v", err)
 			if ne, ok := err.(net.Error); ok && ne.Temporary() {
 				continue
 			}

@@ -100,10 +100,8 @@ func (s *WriterSocket) writer(socket DataSocket) {
 
 		select {
 		case <-s.child.ShouldStop():
-			log.Debug("Done", "port", socket.Port())
 			return
 		case segment := <-s.segmentChannel:
-			// log.Debug("New Segment", "hdr", segment.Header)
 			err := send(socket, segment)
 			if err != nil {
 				log.Error("Error while sending packet", "err", err)
@@ -115,7 +113,6 @@ func (s *WriterSocket) writer(socket DataSocket) {
 
 func sendHeader(socket DataSocket, header *striping.Header) error {
 	err := binary.Write(socket, binary.BigEndian, header)
-	// log.Debug("Wrote header", "hdr", header)
 	if err != nil {
 		return fmt.Errorf("failed to write header: %s", err)
 	}
@@ -162,51 +159,4 @@ func (s *WriterSocket) Close() error {
 	}
 
 	return nil
-}
-
-// --------------- Coordination -------------- //
-
-var _ Parent = &coordination{}
-var _ Child = &coordination{}
-
-type coordination struct {
-	n    int
-	stop chan struct{}
-	done chan struct{}
-}
-
-type Parent interface {
-	Stop()
-}
-
-type Child interface {
-	ShouldStop() chan struct{}
-	Done()
-}
-
-func NewCoordination(n int) (Parent, Child) {
-	c := &coordination{
-		n,
-		make(chan struct{}),
-		make(chan struct{}),
-	}
-	return Parent(c), Child(c)
-}
-
-func (c *coordination) Done() {
-	c.done <- struct{}{}
-}
-
-func (c *coordination) ShouldStop() chan struct{} {
-	return c.stop
-}
-
-func (c *coordination) Stop() {
-	for i := 0; i < c.n; i++ {
-		c.stop <- struct{}{}
-	}
-
-	for i := 0; i < c.n; i++ {
-		<-c.done
-	}
 }

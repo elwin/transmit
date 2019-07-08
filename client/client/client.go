@@ -5,6 +5,7 @@ import (
 	"github.com/elwin/transmit/mode"
 	"io"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/elwin/transmit/client"
@@ -38,28 +39,32 @@ func main() {
 		log.Error("Could not switch mode", "err", err)
 	}
 
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 2; i++ {
+
+		name := "b" + strconv.Itoa(i) + ".txt"
 
 		response, err := conn.Retr("a.txt")
 		if err != nil {
 			log.Error("Something failed", "err", err)
 		}
 
-		f, _ := os.Create("/home/elwin/ftp/b.txt")
+		f, _ := os.Create("/home/elwin/ftp/" + name)
 		_, err = io.Copy(f, response)
 		response.Close()
+
+		conn.ChangeDir("sub")
+
+		f, _ = os.Open("/home/elwin/ftp/a.txt")
+
+		err = conn.Stor(name, f)
+		if err != nil {
+			log.Error("Something happened when writing", "err", err)
+		}
+
+		conn.ChangeDirToParent()
 	}
 
 	// Send file back
-
-	conn.ChangeDir("sub")
-
-	f, _ := os.Open("/home/elwin/ftp/b.txt")
-
-	err = conn.Stor("a.txt", f)
-	if err != nil {
-		log.Error("Something happened when writing", "err", err)
-	}
 
 	/*
 		entries, err = conn.List("/")

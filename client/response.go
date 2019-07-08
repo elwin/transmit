@@ -48,21 +48,3 @@ func (r *SingleConnectionResponse) SetDeadline(t time.Time) error {
 	// return r.conn.SetDeadline(t)
 	return nil
 }
-
-var _ Response = &MultiConnectionResponse{}
-
-type MultiConnectionResponse struct {
-	io.Reader
-}
-
-// Unlike the single data connection the multi data connections
-// can be kept for multiple transfers. Closing happens over the
-// channels themselves instead of over the control connection
-func (MultiConnectionResponse) Close() error {
-	return nil
-}
-
-// What are we supposed to do?
-func (MultiConnectionResponse) SetDeadline(time time.Time) error {
-	return nil
-}

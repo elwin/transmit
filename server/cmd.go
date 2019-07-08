@@ -1037,20 +1037,7 @@ func (cmd commandStor) Execute(conn *Conn, param string) {
 		conn.appendData = false
 	}()
 
-	var bytes int64
-	var err error
-
-	if conn.extendedMode {
-
-		// TODO
-		// 1. Combine MutliReader & MultiWriter (=> MultiSocket)
-		// 2. conn.parallelSockets should be MultiSocket
-
-		fmt.Println("Extended mode")
-		bytes, err = conn.driver.PutFile(targetPath, conn.parallelSockets, conn.appendData)
-	} else {
-		bytes, err = conn.driver.PutFile(targetPath, conn.socket, conn.appendData)
-	}
+	bytes, err := conn.driver.PutFile(targetPath, conn.getActiveSocket(), conn.appendData)
 
 	if err == nil {
 		msg := "OK, received " + strconv.Itoa(int(bytes)) + " bytes"

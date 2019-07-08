@@ -78,16 +78,10 @@ func NewConnection(stream quic.Stream, local, remote snet.Addr) *connection {
 }
 
 func (connection *connection) Read(b []byte) (n int, err error) {
-	// connection.Lock()
-	// defer connection.Unlock()
-
 	return connection.Stream.Read(b)
 }
 
 func (connection *connection) Write(b []byte) (n int, err error) {
-	// connection.Lock()
-	// defer connection.Unlock()
-
 	return connection.Stream.Write(b)
 }
 
