@@ -709,10 +709,9 @@ func (cmd commandRetr) Execute(conn *Conn, param string) {
 
 		if conn.extendedMode {
 
-			conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes on %d connections", bytes, len(conn.parallelSockets)))
+			conn.writeMessage(150, fmt.Sprintf("Data transfer starting %v bytes on ports %d", bytes, conn.parallelSockets.Port()))
 
-			writer := socket2.NewWriterSocket(conn.parallelSockets, 128)
-			writer.ReadFrom(data)
+			bytes, err := conn.parallelSockets.ReadFrom(data)
 			fmt.Println(bytes)
 
 			if err != nil {
@@ -1060,8 +1059,7 @@ func (cmd commandStor) Execute(conn *Conn, param string) {
 		// 2. conn.parallelSockets should be MultiSocket
 
 		fmt.Println("Extended mode")
-		ms := socket2.NewReadsocket(conn.parallelSockets)
-		bytes, err = conn.driver.PutFile(targetPath, ms, conn.appendData)
+		bytes, err = conn.driver.PutFile(targetPath, conn.parallelSockets, conn.appendData)
 	} else {
 		bytes, err = conn.driver.PutFile(targetPath, conn.socket, conn.appendData)
 	}
@@ -1227,6 +1225,8 @@ func (cmd commandSpas) Execute(conn *Conn, param string) {
 
 	conn.writeMessageMultiline(229, line)
 
+	sockets := make([]socket2.DataSocket, len(listeners))
+
 	for i, listener := range listeners {
 		stream, err := listener.Accept()
 		if err != nil {
@@ -1235,9 +1235,10 @@ func (cmd commandSpas) Execute(conn *Conn, param string) {
 			return
 		}
 
-		socket := socket2.NewScionSocket(stream, ports[i])
-		conn.parallelSockets = append(conn.parallelSockets, socket)
+		sockets[i] = socket2.NewScionSocket(stream, ports[i])
 	}
+
+	conn.parallelSockets = socket2.NewMultiSocket(sockets)
 
 }
 

@@ -30,7 +30,7 @@ type Conn struct {
 	controlReader   *bufio.Reader
 	controlWriter   *bufio.Writer
 	socket          socket.DataSocket
-	parallelSockets []socket.DataSocket
+	parallelSockets *socket.MultiSocket
 	driver          Driver
 	auth            Auth
 	logger          Logger
@@ -106,7 +106,7 @@ func (conn *Conn) Serve() {
 		}
 		conn.receiveLine(line)
 		// QUIT command closes connection, break to avoid error on reading from
-		// closed parallelSockets
+		// closed sockets
 		if conn.closed == true {
 			break
 		}
@@ -124,10 +124,10 @@ func (conn *Conn) Close() {
 		conn.socket = nil
 	}
 
-	for _, socket := range conn.parallelSockets {
-		socket.Close()
+	if conn.parallelSockets != nil {
+		conn.parallelSockets.Close()
+		conn.parallelSockets = nil
 	}
-	conn.parallelSockets = nil
 }
 
 func (conn *Conn) upgradeToTLS() error {
