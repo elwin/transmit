@@ -40,7 +40,7 @@ var (
 		"CONF": commandConf{},
 		"DELE": commandDele{},
 		"ENC":  commandEnc{},
-		"EPRT": commandEprt{},
+		// "EPRT": commandEprt{},
 		"EPSV": commandEpsv{},
 		"FEAT": commandFeat{},
 		"LIST": commandList{},
@@ -54,7 +54,7 @@ var (
 		"PASS": commandPass{},
 		"PASV": commandPasv{},
 		"PBSZ": commandPbsz{},
-		"PORT": commandPort{},
+		// "PORT": commandPort{},
 		"PROT": commandProt{},
 		"PWD":  commandPwd{},
 		"QUIT": commandQuit{},
@@ -257,9 +257,12 @@ func (cmd commandDele) Execute(conn *Conn, param string) {
 	}
 }
 
+// Only passive socket supported
+//
 // commandEprt responds to the EPRT FTP command. It allows the client to
 // request an active data parallelSockets with more options than the original PORT
 // command. It mainly adds ipv6 support.
+/*
 type commandEprt struct{}
 
 func (cmd commandEprt) IsExtend() bool {
@@ -292,6 +295,7 @@ func (cmd commandEprt) Execute(conn *Conn, param string) {
 	conn.socket = socket
 	conn.writeMessage(200, "connection established ("+strconv.Itoa(port)+")")
 }
+*/
 
 // commandEpsv responds to the EPSV FTP command. It allows the client to
 // request a passive data parallelSockets with more options than the original PASV
@@ -603,10 +607,13 @@ func (cmd commandPasv) Execute(conn *Conn, param string) {
 	commandEpsv{}.Execute(conn, param)
 }
 
+// Only passive socket supported
+//
 // commandPort responds to the PORT FTP command.
 //
-// The client has opened a listening parallelSockets for sending out of band data and
+// The client has opened a listening socket for sending out of band data and
 // is requesting that we connect to it
+/*
 type commandPort struct{}
 
 func (cmd commandPort) IsExtend() bool {
@@ -620,6 +627,7 @@ func (cmd commandPort) RequireParam() bool {
 func (cmd commandPort) RequireAuth() bool {
 	return true
 }
+
 
 func (cmd commandPort) Execute(conn *Conn, param string) {
 	nums := strings.Split(param, ",")
@@ -635,6 +643,7 @@ func (cmd commandPort) Execute(conn *Conn, param string) {
 	conn.socket = socket
 	conn.writeMessage(200, "connection established ("+strconv.Itoa(port)+")")
 }
+*/
 
 // commandPwd responds to the PWD FTP command.
 //
