@@ -312,7 +312,7 @@ func (server *ServerConn) cmdDataConnFrom(offset uint64, format string, args ...
 			socks[i] = socket.NewScionSocket(conns[i], i)
 		}
 
-		sock = socket.NewMultiSocket(socks)
+		sock = socket.NewMultiSocket(socks, server.maxChunkSize)
 
 	} else {
 
@@ -452,34 +452,7 @@ func (server *ServerConn) FileSize(path string) (int64, error) {
 //
 // The returned ReadCloser must be closed to cleanup the FTP data connection.
 func (server *ServerConn) Retr(path string) (Response, error) {
-
-	/*
-		if server.extendedMode {
-
-			conns, err := server.openDataConns()
-			if err != nil {
-				return nil, err
-			}
-
-			err = server.dispatchCmd("RETR %s", path)
-			if err != nil {
-				return nil, err
-			}
-
-			socks := make([]socket.DataSocket, len(conns))
-			for i := range conns {
-				socks[i] = socket.NewScionSocket(conns[i], i)
-			}
-
-			sock := socket.NewReadsocket(socks)
-
-			return &MultiConnectionResponse{sock}, nil
-
-		} else {*/
-
 	return server.RetrFrom(path, 0)
-
-	/*}*/
 }
 
 // RetrFrom issues a RETR FTP command to fetch the specified file from the remote

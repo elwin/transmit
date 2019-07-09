@@ -16,18 +16,18 @@ type MultiSocket struct {
 var _ DataSocket = MultiSocket{}
 
 func (MultiSocket) Host() string {
-	return "my host"
+	return "hostaddress"
 }
 
 func (MultiSocket) Port() int {
-	return 69
+	return 0
 }
 
 var _ DataSocket = &MultiSocket{}
 
-func NewMultiSocket(sockets []DataSocket) *MultiSocket {
+func NewMultiSocket(sockets []DataSocket, maxLength int) *MultiSocket {
 	return &MultiSocket{
 		NewReadsocket(sockets),
-		NewWriterSocket(sockets, 1000),
+		NewWriterSocket(sockets, maxLength),
 	}
 }

@@ -321,7 +321,7 @@ func (cmd commandEpsv) Execute(conn *Conn, param string) {
 
 	listener, err := scion.Listen(address)
 
-	// Somehow connection doesnt get accepted (stream or something)
+	// Connection doesn't get accepted
 	if err != nil {
 		log.Println(err)
 		conn.writeMessage(425, "Data connection failed")
@@ -337,8 +337,8 @@ func (cmd commandEpsv) Execute(conn *Conn, param string) {
 	conn.socket = socket
 }
 
-// commandList responds to the LIST FTP command. It allows the client to retreive
-// a detailed listing of the contents of a directory.
+// commandList responds to the LIST FTP command. It allows the client
+//  to retrieve a detailed listing of the contents of a directory.
 type commandList struct{}
 
 func (cmd commandList) IsExtend() bool {
@@ -396,7 +396,7 @@ func parseListParam(param string) (path string) {
 			}
 			i = strings.LastIndex(param, " "+field) + len(field) + 1
 		}
-		path = strings.TrimLeft(param[i:], " ") //Get all the path even with space inside
+		path = strings.TrimLeft(param[i:], " ") // Get all the path even with space inside
 	}
 	return path
 }
@@ -499,7 +499,7 @@ func (cmd commandMkd) Execute(conn *Conn, param string) {
 // the original FTP spec had various options for hosts to negotiate how data
 // would be sent over the data parallelSockets, In reality these days (S)tream mode
 // is all that is used for the mode - data is just streamed down the data
-// parallelSockets unchanged.
+// socket unchanged.
 type commandMode struct{}
 
 func (cmd commandMode) IsExtend() bool {
@@ -526,7 +526,7 @@ func (cmd commandMode) Execute(conn *Conn, param string) {
 		conn.writeMessage(200, "OK")
 
 	} else {
-		conn.writeMessage(504, "MODE is an obsolete command")
+		conn.writeMessage(504, "MODE is an obsolete command, only (S)tream and (E)xtended Mode supported")
 	}
 }
 
@@ -1225,7 +1225,7 @@ func (cmd commandSpas) Execute(conn *Conn, param string) {
 		sockets[i] = socket2.NewScionSocket(stream, ports[i])
 	}
 
-	conn.parallelSockets = socket2.NewMultiSocket(sockets)
+	conn.parallelSockets = socket2.NewMultiSocket(sockets, conn.server.MaxChunkLength)
 
 }
 

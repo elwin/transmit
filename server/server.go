@@ -61,6 +61,10 @@ type ServerOpts struct {
 
 	// A logger implementation, if nil the StdLogger is used
 	Logger Logger
+
+	// The maximum length that may be used when sending in parallel mode
+	// Optional, defaults to 1000
+	MaxChunkLength int
 }
 
 // Server is the root of your FTP application. You should instantiate one
@@ -123,6 +127,12 @@ func serverOptsWithDefaults(opts *ServerOpts) *ServerOpts {
 	newOpts.Logger = &StdLogger{}
 	if opts.Logger != nil {
 		newOpts.Logger = opts.Logger
+	}
+
+	if opts.MaxChunkLength == 0 {
+		newOpts.MaxChunkLength = 1000
+	} else {
+		newOpts.MaxChunkLength = opts.MaxChunkLength
 	}
 
 	newOpts.TLS = opts.TLS

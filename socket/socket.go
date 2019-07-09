@@ -6,8 +6,9 @@ import (
 	"github.com/elwin/transmit/scion"
 )
 
-// DataSocket describes a data socket used to send non-control data between the client and
-// server.
+// DataSocket describes a data socket used to send non-control data
+// between the client and server. Can either be used directly or
+// multiple DataSockets assembled together to get parallel mode
 type DataSocket interface {
 	Host() string
 	Port() int

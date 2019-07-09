@@ -42,6 +42,7 @@ type ServerConn struct {
 	skipEPSV      bool
 	mlstSupported bool
 	extendedMode  bool
+	maxChunkSize  int
 }
 
 // DialOption represents an option to start a new connection with DialAddr
@@ -105,11 +106,12 @@ func Dial(remote string, options ...DialOption) (*ServerConn, error) {
 	rm := tconn.RemoteAddr()
 
 	c := &ServerConn{
-		options:  do,
-		features: make(map[string]string),
-		conn:     conn,
-		remote:   rm,
-		logger:   &StdLogger{},
+		options:      do,
+		features:     make(map[string]string),
+		conn:         conn,
+		remote:       rm,
+		logger:       &StdLogger{},
+		maxChunkSize: 1000,
 	}
 
 	_, _, err := c.conn.ReadResponse(StatusReady)
