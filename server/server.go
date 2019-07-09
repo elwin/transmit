@@ -288,7 +288,8 @@ func (server *Server) Serve(l scion.Listener) error {
 	}
 }
 
-// Shutdown will gracefully stop a server. Already connected clients will retain their connections
+// Shutdown will gracefully stop a server
+// Already connected clients will retain their connections
 func (server *Server) Shutdown() error {
 	if server.cancel != nil {
 		server.cancel()
