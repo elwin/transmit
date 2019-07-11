@@ -25,7 +25,7 @@ const (
 )
 
 var (
-	local = "1-ff00:0:112,[127.0.0.1]"
+	local = "17-ffaa:1:be4,[127.0.0.1]"
 )
 
 // ServerConn represents the connection to a remote FTP server.

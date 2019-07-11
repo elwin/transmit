@@ -3,26 +3,16 @@ package scion
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/scionproto/scion/go/lib/sciond"
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/snet/squic"
 	"io"
 )
 
 func Dial(local, remote snet.Addr) (Conn, error) {
-	sciond := sciond.GetDefaultSCIONDPath(&local.IA)
-	dispatcher := ""
 
-	if snet.DefNetwork == nil {
-		err := snet.Init(local.IA, sciond, dispatcher)
-		if err != nil {
-			return nil, fmt.Errorf("failted to initialize SCION: %s", err)
-		}
-	}
-
-	err := squic.Init("", "")
+	err := initNetwork(local)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initilaze SQUIC: %s", err)
+		return nil, err
 	}
 
 	session, err := squic.DialSCION(nil, &local, &remote, nil)
