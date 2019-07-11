@@ -1,8 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"github.com/elwin/transmit/mode"
+	l "log"
 	"strings"
 	"time"
 
@@ -12,8 +14,22 @@ import (
 
 func main() {
 
+	var (
+		local  = flag.String("local", "", "Local address (Format: AS,[IP])")
+		remote = flag.String("remote", "", "Remote address to connect to (Format: AS,[IP]:Port)")
+	)
+
+	flag.Parse()
+	if *local == "" {
+		l.Fatalf("Please set a local address with -local")
+	}
+	if *remote == "" {
+		l.Fatalf("Please set a remote address with -remote")
+	}
+
 	conn, err := ftp.Dial(
-		"17-ffaa:1:c3e,[127.0.0.1]:2121",
+		*local,
+		*remote,
 		// ftp.DialWithDebugOutput(os.Stdout),
 		ftp.DialWithTimeout(60*time.Second),
 	)

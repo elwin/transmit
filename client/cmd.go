@@ -235,12 +235,7 @@ func (server *ServerConn) openDataConn() (socket.DataSocket, error) {
 		return nil, err
 	}
 
-	laddr, err := snet.AddrFromString(local)
-	if err != nil {
-		return nil, err
-	}
-
-	conn, err := scion.Dial(*laddr, *addr)
+	conn, err := scion.Dial(server.local, *addr)
 
 	return socket.NewScionSocket(conn, 0), err
 }
@@ -252,15 +247,10 @@ func (server *ServerConn) openDataConns() ([]scion.Conn, error) {
 		return nil, err
 	}
 
-	laddr, err := snet.AddrFromString(local)
-	if err != nil {
-		return nil, err
-	}
-
 	var conns []scion.Conn
 
 	for _, addr := range addrs {
-		conn, err := scion.Dial(*laddr, addr)
+		conn, err := scion.Dial(server.local, addr)
 		if err != nil {
 			return nil, err
 		}

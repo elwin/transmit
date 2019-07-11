@@ -6,6 +6,7 @@ package ftp
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"github.com/elwin/transmit/scion"
 	"github.com/scionproto/scion/go/lib/snet"
 	"io"
@@ -24,16 +25,13 @@ const (
 	EntryTypeLink
 )
 
-var (
-	local = "17-ffaa:1:be4,[127.0.0.1]"
-)
-
 // ServerConn represents the connection to a remote FTP server.
 // A single connection only supports one in-flight data connection.
 // It is not safe to be called concurrently.
 type ServerConn struct {
 	options *dialOptions
 	conn    *textproto.Conn
+	local   snet.Addr
 	remote  snet.Addr
 	logger  Logger
 
@@ -71,7 +69,7 @@ type Entry struct {
 }
 
 // DialAddr connects to the specified address with optinal options
-func Dial(remote string, options ...DialOption) (*ServerConn, error) {
+func Dial(local, remote string, options ...DialOption) (*ServerConn, error) {
 	do := &dialOptions{}
 	for _, option := range options {
 		option.setup(do)
@@ -84,9 +82,6 @@ func Dial(remote string, options ...DialOption) (*ServerConn, error) {
 	tconn := do.conn
 	if tconn == nil {
 
-		// Why can't I assign directly
-		// Because of the :=
-		// = won't work because of the err
 		t, err := scion.DialAddr(local, remote)
 		tconn = t
 
@@ -104,17 +99,22 @@ func Dial(remote string, options ...DialOption) (*ServerConn, error) {
 	conn := textproto.NewConn(sourceConn)
 
 	rm := tconn.RemoteAddr()
+	lc, err := snet.AddrFromString(local)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse local address: %s", err)
+	}
 
 	c := &ServerConn{
 		options:      do,
 		features:     make(map[string]string),
 		conn:         conn,
+		local:        *lc,
 		remote:       rm,
 		logger:       &StdLogger{},
 		maxChunkSize: 1000,
 	}
 
-	_, _, err := c.conn.ReadResponse(StatusReady)
+	_, _, err = c.conn.ReadResponse(StatusReady)
 
 	if err != nil {
 		c.Quit()
@@ -211,14 +211,14 @@ func DialWithDialFunc(f func(network, address string) (net.Conn, error)) DialOpt
 }
 
 // Connect is an alias to DialAddr, for backward compatibility
-func Connect(addr string) (*ServerConn, error) {
-	return Dial(addr)
+func Connect(local, remote string) (*ServerConn, error) {
+	return Dial(local, remote)
 }
 
 // DialTimeout initializes the connection to the specified ftp server address.
 //
 // It is generally followed by a call to Login() as most FTP commands require
 // an authenticated user.
-func DialTimeout(addr string, timeout time.Duration) (*ServerConn, error) {
-	return Dial(addr, DialWithTimeout(timeout))
+func DialTimeout(local, remote string, timeout time.Duration) (*ServerConn, error) {
+	return Dial(local, remote, DialWithTimeout(timeout))
 }
