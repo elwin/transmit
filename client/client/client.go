@@ -4,7 +4,9 @@ import (
 	"flag"
 	"fmt"
 	"github.com/elwin/transmit/mode"
+	"io"
 	l "log"
+	"os"
 	"strings"
 	"time"
 
@@ -61,16 +63,14 @@ func main() {
 	conn.Mode(mode.ExtendedBlockMode)
 
 	response, _ := conn.Retr("stor1.txt")
-	buf := make([]byte, 10)
-
-	for {
-		n, _ := response.Read(buf)
-		if n == 0 {
-			break
-		}
-
-		fmt.Print(string(buf[0:n]))
+	os.Mkdir("ftp", os.ModePerm)
+	f, err := os.Create("ftp/retr.txt")
+	if err != nil {
+		log.Error("failed to create file", "err", err)
 	}
+	io.Copy(f, response)
+
+	response.Close()
 
 	/*
 

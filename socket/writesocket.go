@@ -148,14 +148,12 @@ func send(socket DataSocket, segment *striping.Segment) error {
 }
 
 func (s *WriterSocket) Close() error {
-	// TODO
-	// First Flush / Block Channels
-	// Then send closing message
 	for _, s := range s.sockets {
 		err := sendHeader(s, striping.NewClosingHeader())
 		if err != nil {
 			log.Error("Failed to write closing header", "err", err)
 		}
+		s.Close()
 	}
 
 	return nil

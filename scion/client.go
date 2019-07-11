@@ -15,6 +15,8 @@ func Dial(local, remote snet.Addr) (Conn, error) {
 		return nil, err
 	}
 
+	setupPath(local, remote)
+
 	session, err := squic.DialSCION(nil, &local, &remote, nil)
 	if err != nil {
 		return nil, fmt.Errorf("unable to dial %s: %s", AddrToString(remote), err)

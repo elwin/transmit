@@ -1,9 +1,9 @@
 package scion
 
 import (
+	"fmt"
 	"github.com/lucas-clemente/quic-go"
 	"github.com/scionproto/scion/go/lib/snet"
-	"sync"
 	"time"
 )
 
@@ -63,7 +63,6 @@ var _ Conn = &connection{}
 
 type connection struct {
 	quic.Stream
-	sync.Mutex
 	Local  snet.Addr
 	Remote snet.Addr
 }
@@ -71,7 +70,6 @@ type connection struct {
 func NewConnection(stream quic.Stream, local, remote snet.Addr) *connection {
 	return &connection{
 		stream,
-		sync.Mutex{},
 		local,
 		remote,
 	}
@@ -91,4 +89,9 @@ func (connection *connection) LocalAddr() snet.Addr {
 
 func (connection *connection) RemoteAddr() snet.Addr {
 	return connection.Remote
+}
+
+func (connection *connection) Close() error {
+	fmt.Println("Closing")
+	return connection.Stream.Close()
 }
