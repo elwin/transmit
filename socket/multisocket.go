@@ -13,7 +13,7 @@ type MultiSocket struct {
 	*WriterSocket
 }
 
-var _ DataSocket = MultiSocket{}
+var _ DataSocket = &MultiSocket{}
 
 func (MultiSocket) Host() string {
 	return "hostaddress"
@@ -21,6 +21,10 @@ func (MultiSocket) Host() string {
 
 func (MultiSocket) Port() int {
 	return 0
+}
+
+func (m *MultiSocket) Close() error {
+	return m.WriterSocket.Close()
 }
 
 var _ DataSocket = &MultiSocket{}

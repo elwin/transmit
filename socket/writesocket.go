@@ -153,6 +153,8 @@ func send(socket DataSocket, segment *striping.Segment) error {
 }
 
 func (s *WriterSocket) Close() error {
+	// TODO: Might also need to send EOD?
+
 	for _, s := range s.sockets {
 		err := sendHeader(s, striping.NewClosingHeader())
 		if err != nil {
