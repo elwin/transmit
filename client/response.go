@@ -8,27 +8,28 @@ import (
 
 // Response represents a data-connection
 type Response interface {
-	io.ReadCloser
+	io.Reader
 	SetDeadline(time time.Time) error
 }
 
-var _ Response = &SingleConnectionResponse{}
+var _ Response = &ConnResponse{}
 
 // Response represents a data-connection
-type SingleConnectionResponse struct {
+type ConnResponse struct {
 	conn   socket.DataSocket
 	c      *ServerConn
 	closed bool
 }
 
 // Read implements the io.Reader interface on a FTP data connection.
-func (r *SingleConnectionResponse) Read(buf []byte) (int, error) {
+func (r *ConnResponse) Read(buf []byte) (int, error) {
 	return r.conn.Read(buf)
 }
 
 // Close implements the io.Closer interface on a FTP data connection.
 // After the first call, Close will do nothing and return nil.
-func (r *SingleConnectionResponse) Close() error {
+/*
+func (r *ConnResponse) Close() error {
 
 	if r.closed {
 		return nil
@@ -41,10 +42,10 @@ func (r *SingleConnectionResponse) Close() error {
 
 	r.closed = true
 	return err
-}
+}*/
 
 // SetDeadline sets the deadlines associated with the connection.
-func (r *SingleConnectionResponse) SetDeadline(t time.Time) error {
+func (r *ConnResponse) SetDeadline(t time.Time) error {
 	// return r.conn.SetDeadline(t)
 	return nil
 }

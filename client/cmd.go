@@ -347,8 +347,8 @@ func (server *ServerConn) NameList(path string) (entries []string, err error) {
 		return
 	}
 
-	r := &SingleConnectionResponse{conn: conn, c: server}
-	defer r.Close()
+	r := &ConnResponse{conn: conn, c: server}
+	// defer r.Close()
 
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
@@ -378,8 +378,8 @@ func (server *ServerConn) List(path string) (entries []*Entry, err error) {
 		return
 	}
 
-	r := &SingleConnectionResponse{conn: conn, c: server}
-	defer r.Close()
+	r := &ConnResponse{conn: conn, c: server}
+	// defer r.Close()
 
 	scanner := bufio.NewScanner(r)
 	now := time.Now()
@@ -440,8 +440,6 @@ func (server *ServerConn) FileSize(path string) (int64, error) {
 
 // Retr issues a RETR FTP command to fetch the specified file from the remote
 // FTP server.
-//
-// The returned ReadCloser must be closed to cleanup the FTP data connection.
 func (server *ServerConn) Retr(path string) (Response, error) {
 	return server.RetrFrom(path, 0)
 }
@@ -457,7 +455,7 @@ func (server *ServerConn) RetrFrom(path string, offset uint64) (Response, error)
 	}
 
 	// TODO: Issues with closing our new channel
-	return &SingleConnectionResponse{conn: socket, c: server}, nil
+	return &ConnResponse{conn: socket, c: server}, nil
 }
 
 // Stor issues a STOR FTP command to store a file to the remote FTP server.
@@ -642,7 +640,7 @@ func (server *ServerConn) Eret(path string, offset, length int) (Response, error
 		return nil, err
 	}
 
-	return &SingleConnectionResponse{conn: socket, c: server}, nil
+	return &ConnResponse{conn: socket, c: server}, nil
 }
 
 func (server *ServerConn) Mode(mode byte) error {

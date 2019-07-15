@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io"
 	l "log"
 	"os"
@@ -74,10 +73,6 @@ func main() {
 		log.Error("failed to create file", "err", err)
 	}
 	io.Copy(f, response)
-
-	fmt.Println("Copied")
-
-	response.Close()
 
 }
 

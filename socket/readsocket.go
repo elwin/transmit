@@ -47,8 +47,7 @@ func (s *ReaderSocket) Read(p []byte) (n int, err error) {
 	for s.queue.Len() == 0 ||
 		s.queue.Peek().OffsetCount > s.written {
 		// Wait until there is a suitable segment
-		time.Sleep(time.Millisecond * 500)
-		fmt.Println(s.queue.Len())
+		time.Sleep(time.Millisecond * 10)
 	}
 
 	next := s.queue.Pop()
