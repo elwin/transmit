@@ -3,9 +3,10 @@ package socket
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
+
 	"github.com/elwin/transmit/striping"
 	"github.com/scionproto/scion/go/lib/log"
-	"io"
 )
 
 type ReaderSocket struct {
@@ -70,7 +71,7 @@ func (s *ReaderSocket) streamListener() {
 
 			if segment.IsClosingConnection() {
 				// TODO
-				// Is never triggered
+				// Is triggered upon STOR
 				log.Debug("Closing conn!")
 			}
 
@@ -99,6 +100,8 @@ func streamReader(socket DataSocket, sc chan *striping.Segment, done chan struct
 		sc <- segment
 
 		if segment.ContainsFlag(striping.BlockFlagEndOfData) {
+			// TODO: Is never triggered
+			log.Debug("Received EOD")
 			return
 		}
 

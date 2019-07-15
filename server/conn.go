@@ -11,12 +11,13 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
-	"github.com/elwin/transmit/socket"
 	"io"
 	random "math/rand"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/elwin/transmit/socket"
 
 	"github.com/elwin/transmit/scion"
 )

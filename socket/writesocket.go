@@ -3,9 +3,10 @@ package socket
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
+
 	"github.com/elwin/transmit/striping"
 	"github.com/scionproto/scion/go/lib/log"
-	"io"
 )
 
 type WriterSocket struct {
@@ -47,6 +48,8 @@ func (s *WriterSocket) StreamWriter() {
 }
 
 func (s *WriterSocket) Write(p []byte) (n int, err error) {
+	panic("Please use ReadFrom instead of Write")
+
 	if !s.writing {
 		go s.StreamWriter()
 	}
@@ -76,6 +79,7 @@ func (s *WriterSocket) ReadFrom(reader io.Reader) (n int64, err error) {
 
 		s.segmentChannel <- striping.NewSegment(buf[0:n], s.written)
 		s.written += n
+
 	}
 
 	// Notify all channels to finish
@@ -88,10 +92,11 @@ func (s *WriterSocket) ReadFrom(reader io.Reader) (n int64, err error) {
 
 func (s *WriterSocket) writer(socket DataSocket) {
 	defer func() {
+		log.Debug("Sending EOD Header")
 		eod := striping.NewHeader(0, 0, striping.BlockFlagEndOfData)
 		err := sendHeader(socket, eod)
 		if err != nil {
-			log.Error("Error while sending header", "err", err)
+			log.Error("Error while sending EOD header", "err", err)
 		}
 		s.child.Done()
 	}()

@@ -2,11 +2,14 @@ package scion
 
 import (
 	"fmt"
+
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/snet/squic"
 )
 
 func Listen(address string) (Listener, error) {
+
+	fmt.Println(address)
 
 	addr, _ := snet.AddrFromString(address)
 

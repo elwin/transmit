@@ -2,13 +2,12 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"github.com/elwin/transmit/mode"
 	"io"
 	l "log"
-	"os"
 	"strings"
 	"time"
+
+	"github.com/elwin/transmit/mode"
 
 	"github.com/elwin/transmit/client"
 	"github.com/scionproto/scion/go/lib/log"
@@ -45,82 +44,48 @@ func main() {
 		log.Error("Failed to authenticate", "err", err)
 	}
 
-	err = conn.Stor("stor1.txt", strings.NewReader("Hello World!\n"))
-	if err != nil {
-		log.Error("failed to stor", "err", err)
-	}
-
-	err = conn.Stor("stor2.txt", strings.NewReader("Bye World!\n"))
-	if err != nil {
-		log.Error("failed to stor", "err", err)
-	}
-
-	entries, _ := conn.List("/")
-	for _, entry := range entries {
-		fmt.Println(entry.Name)
-	}
-
 	conn.Mode(mode.ExtendedBlockMode)
 
-	response, _ := conn.Retr("stor1.txt")
-	os.Mkdir("ftp", os.ModePerm)
-	f, err := os.Create("ftp/retr.txt")
-	if err != nil {
-		log.Error("failed to create file", "err", err)
-	}
-	io.Copy(f, response)
+	reader := &myReader{strings.NewReader("Hello World")}
 
-	response.Close()
+	err = conn.Stor("stor1.txt", reader)
+	if err != nil {
+		log.Error("failed to stor", "err", err)
+	}
 
 	/*
+
+		err = conn.Stor("stor2.txt", strings.NewReader("Bye World!\n"))
+		if err != nil {
+			log.Error("failed to stor", "err", err)
+		}
 
 		entries, _ := conn.List("/")
 		for _, entry := range entries {
 			fmt.Println(entry.Name)
 		}
 
-		err = conn.Mode(mode.ExtendedBlockMode)
+		response, _ := conn.Retr("retr.txt")
+		os.Mkdir("ftp", os.ModePerm)
+		f, err := os.Create("ftp/retr.txt")
 		if err != nil {
-			log.Error("Could not switch mode", "err", err)
+			log.Error("failed to create file", "err", err)
 		}
+		io.Copy(f, response)
 
-		for i := 0; i < 2; i++ {
-
-			name := "b" + strconv.Itoa(i) + ".txt"
-
-			response, err := conn.Retr("a.txt")
-			if err != nil {
-				log.Error("Something failed", "err", err)
-			}
-
-			f, _ := os.Create("/home/elwin/ftp/" + name)
-			_, err = io.Copy(f, response)
-			response.Close()
-
-			conn.ChangeDir("sub")
-
-			f, _ = os.Open("/home/elwin/ftp/a.txt")
-
-			err = conn.Stor(name, f)
-			if err != nil {
-				log.Error("Something happened when writing", "err", err)
-			}
-
-			conn.ChangeDirToParent()
-		}
-	*/
-
-	// Send file back
-
-	/*
-		entries, err = conn.List("/")
-		if err != nil {
-			log.Error("List", "err", err)
-		}
-		for _, entry := range entries {
-			fmt.Println(entry.Name)
-		}
+		response.Close()
 
 	*/
 
+}
+
+// Prevent io.Copy from using
+var _ io.Reader = &myReader{}
+
+type myReader struct {
+	r io.Reader
+}
+
+func (w *myReader) Read(p []byte) (n int, err error) {
+	return w.r.Read(p)
 }
