@@ -4,18 +4,20 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"time"
+
+	"github.com/scionproto/scion/go/lib/log"
 
 	"github.com/elwin/transmit/striping"
-	"github.com/scionproto/scion/go/lib/log"
 )
 
 type ReaderSocket struct {
-	sockets   []DataSocket
-	queue     *striping.SegmentQueue
-	written   uint64
-	eodc      int
-	finished  int
-	listening bool
+	sockets    []DataSocket
+	queue      *striping.SegmentQueue
+	written    uint64
+	eodc       int
+	finished   int // Might need mutex
+	dispatched bool
 }
 
 var _ io.Reader = &ReaderSocket{}
@@ -29,84 +31,67 @@ func NewReadsocket(sockets []DataSocket) *ReaderSocket {
 }
 
 func (s *ReaderSocket) Read(p []byte) (n int, err error) {
-	if !s.listening {
-		go s.streamListener()
-		s.listening = true
+
+	if !s.dispatched {
+		s.dispatched = true
+		s.dispatchReader()
 	}
 
+	// Potential race condition?
+	// No, because the reader push segments on the queue
+	// before they increase the finished count
 	if s.finished == s.eodc && s.queue.Len() == 0 {
 		return 0, io.EOF
 	}
 
 	for s.queue.Len() == 0 ||
 		s.queue.Peek().OffsetCount > s.written {
-		// Loop and wait until at least one available element is here
+		// Wait until there is a suitable segment
+		time.Sleep(time.Millisecond * 500)
+		fmt.Println(s.queue.Len())
 	}
 
 	next := s.queue.Pop()
 	s.written += next.ByteCount
 
+	// If copy copies less then the ByteCount we have a problem
 	return copy(p, next.Data), nil
-}
-
-func (s *ReaderSocket) streamListener() {
-
-	segmentChannel := make(chan *striping.Segment)
-	done := make(chan struct{})
-
-	for _, s := range s.sockets {
-		go streamReader(s, segmentChannel, done)
-	}
-
-	for {
-
-		// Listen to children
-		select {
-		case segment := <-segmentChannel:
-			if segment.IsEODCount() {
-				s.eodc = segment.GetEODCount()
-			} else {
-				s.queue.Push(segment)
-			}
-
-			if segment.IsClosingConnection() {
-				// TODO
-				// Is triggered upon STOR
-				log.Debug("Closing conn!")
-			}
-
-		case <-done:
-			s.finished += 1
-			if s.finished == s.eodc {
-				return
-			}
-		}
-	}
 
 }
-func streamReader(socket DataSocket, sc chan *striping.Segment, done chan struct{}) {
-	defer func() {
-		done <- struct{}{}
-	}()
 
+func (s *ReaderSocket) dispatchReader() {
+	for _, subSocket := range s.sockets {
+		go s.receiveOnSocket(subSocket)
+	}
+}
+
+func (s *ReaderSocket) receiveOnSocket(socket DataSocket) {
 	for {
 
-		segment, err := receiveNextSegment(socket)
+		seg, err := receiveNextSegment(socket)
 		if err != nil {
-			log.Error("failed to fetch next segment", "err", err)
+			log.Error("Failed to receive segment", "err", err)
 		}
 
-		// Send segment back to parent
-		sc <- segment
+		// The EOD count header has a special format
+		// and is only used to transmit the EOD count
+		if seg.IsEODCount() {
+			s.eodc = seg.GetEODCount()
+			continue
+		}
 
-		if segment.ContainsFlag(striping.BlockFlagEndOfData) {
-			// TODO: Is never triggered
-			log.Debug("Received EOD")
+		s.queue.Push(seg)
+
+		if seg.ContainsFlag(striping.BlockFlagEndOfData) {
+			s.finished++
+		}
+
+		if seg.ContainsFlag(striping.BlockFlagSenderClosesConnection) {
+			log.Debug("Closing connection")
 			return
 		}
 
 	}
-
 }
 
 func receiveNextSegment(socket DataSocket) (*striping.Segment, error) {
@@ -131,11 +116,10 @@ func receiveNextSegment(socket DataSocket) (*striping.Segment, error) {
 
 			cur += n
 			if cur == int(header.ByteCount) {
-				break
+				return striping.NewSegmentWithHeader(header, data), nil
 			}
 		}
 
-		return striping.NewSegmentWithHeader(header, data), nil
 	}
 
 }

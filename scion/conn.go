@@ -1,10 +1,10 @@
 package scion
 
 import (
-	"fmt"
+	"time"
+
 	"github.com/lucas-clemente/quic-go"
 	"github.com/scionproto/scion/go/lib/snet"
-	"time"
 )
 
 // Copied from the net package and replaced net.Addr with snet.Addr
@@ -92,6 +92,5 @@ func (connection *connection) RemoteAddr() snet.Addr {
 }
 
 func (connection *connection) Close() error {
-	fmt.Println("Closing")
 	return connection.Stream.Close()
 }

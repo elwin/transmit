@@ -14,7 +14,7 @@ type DataSocket interface {
 	Port() int
 
 	io.Reader
-	io.ReaderFrom
+	// io.ReaderFrom
 	io.Writer
 	io.Closer
 }

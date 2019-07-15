@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/elwin/transmit/socket"
 	"io"
 	"net/textproto"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/elwin/transmit/socket"
 
 	"github.com/elwin/transmit/scion"
 	"github.com/scionproto/scion/go/lib/snet"
@@ -479,9 +480,13 @@ func (server *ServerConn) StorFrom(path string, r io.Reader, offset uint64) erro
 	}
 
 	_, err = io.Copy(conn, r)
-	conn.Close()
 	if err != nil {
 		return err
+	}
+
+	err = conn.Close()
+	if err != nil {
+		return fmt.Errorf("error closing the connection: %s", err)
 	}
 
 	_, _, err = server.conn.ReadResponse(StatusClosingDataConnection)

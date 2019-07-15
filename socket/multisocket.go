@@ -20,7 +20,7 @@ func (MultiSocket) Host() string {
 }
 
 func (MultiSocket) Port() int {
-	return 0
+	return 9999
 }
 
 func (m *MultiSocket) Close() error {

@@ -2,8 +2,10 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io"
 	l "log"
+	"os"
 	"strings"
 	"time"
 
@@ -53,29 +55,29 @@ func main() {
 		log.Error("failed to stor", "err", err)
 	}
 
+	err = conn.Stor("stor2.txt", strings.NewReader("Bye World!"))
+	if err != nil {
+		log.Error("failed to stor", "err", err)
+	}
+
 	/*
-
-		err = conn.Stor("stor2.txt", strings.NewReader("Bye World!\n"))
-		if err != nil {
-			log.Error("failed to stor", "err", err)
-		}
-
 		entries, _ := conn.List("/")
 		for _, entry := range entries {
 			fmt.Println(entry.Name)
 		}
-
-		response, _ := conn.Retr("retr.txt")
-		os.Mkdir("ftp", os.ModePerm)
-		f, err := os.Create("ftp/retr.txt")
-		if err != nil {
-			log.Error("failed to create file", "err", err)
-		}
-		io.Copy(f, response)
-
-		response.Close()
-
 	*/
+
+	response, _ := conn.Retr("retr.txt")
+	os.Mkdir("ftp", os.ModePerm)
+	f, err := os.Create("ftp/retr.txt")
+	if err != nil {
+		log.Error("failed to create file", "err", err)
+	}
+	io.Copy(f, response)
+
+	fmt.Println("Copied")
+
+	response.Close()
 
 }
 

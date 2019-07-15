@@ -10,7 +10,7 @@ type coordination struct {
 }
 
 type Parent interface {
-	Stop()
+	Wait()
 }
 
 type Child interface {
@@ -35,7 +35,7 @@ func (c *coordination) ShouldStop() chan struct{} {
 	return c.stop
 }
 
-func (c *coordination) Stop() {
+func (c *coordination) Wait() {
 	for i := 0; i < c.n; i++ {
 		c.stop <- struct{}{}
 	}
